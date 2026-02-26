@@ -13,22 +13,14 @@ use App\Views\UserResource;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Psr\Http\Message\ResponseFactoryInterface;
 
-/**
- * Configuração do Container de Injeção de Dependência (PSR-11).
- * Retorna um array de definições para ser usado com PHP-DI.
- */
-
-// Função helper para obter variáveis de ambiente
 function env_config(string $key, mixed $default = null): mixed
 {
     return $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key) ?: $default;
 }
 
 return [
-    // PSR-17 Response Factory
     ResponseFactoryInterface::class => new Psr17Factory(),
 
-    // Configurações do ambiente
     'config' => [
         'db' => [
             'driver' => env_config('DB_DRIVER', 'mysql'),
@@ -53,13 +45,11 @@ return [
         ],
     ],
 
-    // Database Capsule - Eloquent ORM
     DatabaseCapsule::class => function ($container) {
         $dbConfig = $container->get('config')['db'];
         return new DatabaseCapsule($dbConfig);
     },
 
-    // Middlewares
     CorsMiddleware::class => function ($container) {
         $corsConfig = $container->get('config')['cors'];
         return new CorsMiddleware($corsConfig['allowed_origins']);
@@ -89,19 +79,15 @@ return [
         );
     },
 
-    // Models - UserModel com Eloquent
     UserModel::class => function ($container) {
-        // DatabaseCapsule já inicializa o Eloquent globalmente
         $container->get(DatabaseCapsule::class);
         return new UserModel();
     },
 
-    // Resources
     UserResource::class => function () {
         return new UserResource();
     },
 
-    // Controllers
     UserController::class => function ($container) {
         return new UserController(
             $container->get(UserModel::class),
@@ -116,7 +102,6 @@ return [
         );
     },
 
-    // Middleware JWT
     JwtAuthMiddleware::class => function () {
         return new JwtAuthMiddleware();
     },

@@ -10,10 +10,6 @@ use App\Views\UserResource;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
-/**
- * Controller de Autenticação
- * Gerencia login, logout e dados do usuário logado.
- */
 class AuthController extends Controller
 {
     public function __construct(
@@ -22,15 +18,10 @@ class AuthController extends Controller
     ) {
     }
 
-    /**
-     * POST /api/auth/login
-     * Realiza login e retorna token JWT em cookie httpOnly.
-     */
     public function login(ServerRequestInterface $request): ResponseInterface
     {
         $body = $this->getBody($request);
 
-        // Validação
         $errors = $this->validate($body, [
             'email' => 'required',
             'senha' => 'required',
@@ -40,20 +31,16 @@ class AuthController extends Controller
             return $this->resource->validationError($errors);
         }
 
-        // Busca usuário
         $usuario = $this->model->verificarSenha($body['email'], $body['senha']);
 
         if (!$usuario) {
             return $this->resource->loginFailed('Email ou senha inválidos');
         }
 
-        // Gera token JWT
         $token = $this->gerarToken($usuario);
 
-        // Cria resposta com cookie httpOnly
         $response = $this->resource->loginSuccess($usuario, $token);
 
-        // Adiciona cookie httpOnly
         $expiry = time() + (int) ($_ENV['JWT_EXPIRY'] ?? 3600);
 
         $response = $response->withHeader(
@@ -64,15 +51,10 @@ class AuthController extends Controller
         return $response;
     }
 
-    /**
-     * POST /api/auth/logout
-     * Realiza logout removendo o cookie.
-     */
     public function logout(ServerRequestInterface $request): ResponseInterface
     {
         $response = Response::json(['message' => 'Logout realizado com sucesso']);
 
-        // Remove cookie
         $response = $response->withHeader(
             'Set-Cookie',
             'token=; HttpOnly; Secure; SameSite=Strict; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
@@ -81,10 +63,6 @@ class AuthController extends Controller
         return $response;
     }
 
-    /**
-     * GET /api/auth/me
-     * Retorna dados do usuário logado.
-     */
     public function me(ServerRequestInterface $request): ResponseInterface
     {
         $userId = $this->getUserId($request);
@@ -102,9 +80,6 @@ class AuthController extends Controller
         return $this->resource->item($usuario);
     }
 
-    /**
-     * Gera um token JWT.
-     */
     private function gerarToken(array $usuario): string
     {
         $secret = $_ENV['JWT_SECRET'] ?? 'development-secret-change-in-production';
@@ -133,9 +108,6 @@ class AuthController extends Controller
         return "{$headerEncoded}.{$payloadEncoded}.{$signature}";
     }
 
-    /**
-     * Codifica string para base64 URL-safe.
-     */
     private function base64UrlEncode(string $data): string
     {
         return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');

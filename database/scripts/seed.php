@@ -22,7 +22,6 @@ $capsule->setAsGlobal();
 
 $pdo = $capsule->getConnection()->getPdo();
 
-// Executar seeds da pasta database/seed
 $seedPath = __DIR__ . '/../seed';
 
 if (!is_dir($seedPath)) {

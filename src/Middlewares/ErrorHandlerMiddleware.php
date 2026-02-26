@@ -12,10 +12,6 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 
-/**
- * Middleware para tratamento centralizado de erros.
- * Converte exceções em respostas HTTP apropriadas.
- */
 class ErrorHandlerMiddleware implements MiddlewareInterface
 {
     private bool $displayErrors;
@@ -51,7 +47,6 @@ class ErrorHandlerMiddleware implements MiddlewareInterface
 
         $response = $this->responseFactory->createResponse($e->getStatusCode());
 
-        // Adiciona headers
         foreach ($e->getHeaders() as $name => $value) {
             $response = $response->withHeader($name, $value);
         }
@@ -67,7 +62,6 @@ class ErrorHandlerMiddleware implements MiddlewareInterface
 
     private function handleGenericException(\Throwable $e): ResponseInterface
     {
-        // Log do erro
         if ($this->logger !== null) {
             $this->logger->error($e->getMessage(), [
                 'exception' => $e::class,
@@ -81,7 +75,6 @@ class ErrorHandlerMiddleware implements MiddlewareInterface
 
         $statusCode = 500;
 
-        // Verifica se é uma exceção do Eloquent/DB
         if ($e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
             $statusCode = 404;
             $mensagem = $this->displayErrors ? $e->getMessage() : 'Recurso não encontrado';

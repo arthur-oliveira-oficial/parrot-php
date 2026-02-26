@@ -4,10 +4,6 @@ namespace App\Core;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 
-/**
- * Configuração do Eloquent ORM via Capsule.
- * Fornece acesso ao Builder e ao ORM.
- */
 class DatabaseCapsule
 {
     private Capsule $capsule;

@@ -7,9 +7,6 @@ namespace App\Database\Migrations;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Capsule\Manager as Schema;
 
-/**
- * Migration: Criar tabela de usuários
- */
 return new class
 {
     public function up(): void

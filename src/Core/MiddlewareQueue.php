@@ -6,10 +6,6 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-/**
- * Fila de middlewares PSR-15.
- * Processa middlewares em sequência e delega para o handler final.
- */
 class MiddlewareQueue implements RequestHandlerInterface
 {
     private int $index = 0;
@@ -27,12 +23,10 @@ class MiddlewareQueue implements RequestHandlerInterface
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         if (!isset($this->middlewares[$this->index])) {
-            // Não há mais middlewares, delega para o handler final
             if ($this->handler !== null) {
                 return $this->handler->handle($request);
             }
 
-            // Sem handler final, retorna erro
             return Response::serverError('Nenhum handler disponível');
         }
 

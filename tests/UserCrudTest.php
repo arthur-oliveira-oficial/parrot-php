@@ -11,9 +11,6 @@ use PHPUnit\Framework\TestCase;
 use Nyholm\Psr7\ServerRequest;
 use Nyholm\Psr7\Response as PsrResponse;
 
-/**
- * Testes para CRUD de Usuários.
- */
 class UserCrudTest extends TestCase
 {
     private Router $router;
@@ -30,17 +27,11 @@ class UserCrudTest extends TestCase
         $this->userController = new UserController($this->userModel, $this->userResource);
     }
 
-    /**
-     * Testa que o controller de usuário pode ser instanciado.
-     */
     public function testUserControllerCanBeInstantiated(): void
     {
         $this->assertInstanceOf(UserController::class, $this->userController);
     }
 
-    /**
-     * Testa registro de todas as rotas CRUD.
-     */
     public function testCrudRoutesRegistration(): void
     {
         $this->router->get('/api/usuarios', [UserController::class, 'index']);
@@ -49,12 +40,9 @@ class UserCrudTest extends TestCase
         $this->router->put('/api/usuarios/{id}', [UserController::class, 'update']);
         $this->router->delete('/api/usuarios/{id}', [UserController::class, 'destroy']);
 
-        $this->assertTrue(true); // Se não抛 exception, registrou OK
+        $this->assertTrue(true);
     }
 
-    /**
-     * Testa conversão de padrão de rota com parâmetros.
-     */
     public function testRoutePatternConversion(): void
     {
         $router = new Router();
@@ -68,16 +56,10 @@ class UserCrudTest extends TestCase
         $this->assertEquals('#^/api/usuarios/([^/]+)$#', $result);
     }
 
-    /**
-     * Testa validação de dados para criar usuário.
-     */
     public function testValidationForCreateUser(): void
     {
-        // Teste com dados incompletos
         $body = [
             'nome' => 'João',
-            // email ausente
-            // senha ausente
         ];
 
         $errors = [];
@@ -95,9 +77,6 @@ class UserCrudTest extends TestCase
         $this->assertCount(2, $errors);
     }
 
-    /**
-     * Testa validação de email válido.
-     */
     public function testEmailValidation(): void
     {
         $emailsValidos = [
@@ -122,9 +101,6 @@ class UserCrudTest extends TestCase
         }
     }
 
-    /**
-     * Testa que o tipo de usuário pode ser admin ou user.
-     */
     public function testUserTypeValidation(): void
     {
         $tiposValidos = ['admin', 'user'];
@@ -139,9 +115,6 @@ class UserCrudTest extends TestCase
         }
     }
 
-    /**
-     * Testa que o UserModel tem os métodos esperados.
-     */
     public function testUserModelHasExpectedMethods(): void
     {
         $model = new UserModel();
@@ -155,17 +128,11 @@ class UserCrudTest extends TestCase
         $this->assertTrue(method_exists($model, 'verificarSenha'), 'Model deve ter método verificarSenha');
     }
 
-    /**
-     * Testa que o UserResource estende Resource.
-     */
     public function testUserResourceExtendsResource(): void
     {
         $this->assertInstanceOf(Resource::class, $this->userResource);
     }
 
-    /**
-     * Testa que o password_hash funciona corretamente.
-     */
     public function testPasswordHashing(): void
     {
         $senha = 'minhaSenha123';
@@ -176,9 +143,6 @@ class UserCrudTest extends TestCase
         $this->assertTrue(password_needs_rehash($hash, PASSWORD_DEFAULT) === false, 'Hash não precisa de rehash');
     }
 
-    /**
-     * Testa que o UserModel usa a tabela correta.
-     */
     public function testUserModelTableName(): void
     {
         $model = new UserModel();
@@ -187,9 +151,6 @@ class UserCrudTest extends TestCase
         $this->assertEquals('usuarios', $table);
     }
 
-    /**
-     * Testa que o UserModel usa SoftDeletes.
-     */
     public function testUserModelUsesSoftDeletes(): void
     {
         $model = new UserModel();

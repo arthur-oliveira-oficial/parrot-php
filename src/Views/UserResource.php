@@ -6,21 +6,12 @@ namespace App\Views;
 
 use Psr\Http\Message\ResponseInterface;
 
-/**
- * Resource para formatar respostas de usuário.
- * Remove dados sensíveis como senha.
- */
 class UserResource extends Resource
 {
-    /**
-     * Transforma um usuário removendo dados sensíveis.
-     */
     protected function transform(array $item): array
     {
-        // Remove senha da resposta
         unset($item['senha']);
 
-        // Renomeia campos de data para formato mais legível
         if (isset($item['criado_em'])) {
             $item['criado_em'] = $item['criado_em'];
         }
@@ -36,17 +27,11 @@ class UserResource extends Resource
         return $item;
     }
 
-    /**
-     * Retorna um usuário formatado.
-     */
     public function toArray(array $item): array
     {
         return $this->transform($item);
     }
 
-    /**
-     * Retorna coleção de usuários formatados.
-     */
     public function collection(array $items, string $key = 'data'): ResponseInterface
     {
         $transformedItems = array_map(
@@ -57,17 +42,11 @@ class UserResource extends Resource
         return parent::collection($transformedItems, $key);
     }
 
-    /**
-     * Retorna um único usuário.
-     */
     public function item(array $item, string $key = 'data'): ResponseInterface
     {
         return parent::item($this->transform($item), $key);
     }
 
-    /**
-     * Retorna resposta de login bem-sucedido.
-     */
     public function loginSuccess(array $user, string $token): ResponseInterface
     {
         $userData = $this->transform($user);
@@ -79,9 +58,6 @@ class UserResource extends Resource
         ]);
     }
 
-    /**
-     * Retorna resposta de erro de login.
-     */
     public function loginFailed(string $message = 'Credenciais inválidas'): ResponseInterface
     {
         return \App\Core\Response::unauthorized($message);

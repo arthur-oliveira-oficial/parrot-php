@@ -1,6 +1,5 @@
 <?php
 
-// Seed: Criar usuário admin
 $senhaHash = password_hash('admin123', PASSWORD_BCRYPT);
 
 $stmt = $pdo->prepare("

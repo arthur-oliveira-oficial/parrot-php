@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
-/**
- * Exceção base para erros HTTP.
- * Permite diferenciação de tipos de erro.
- */
 class HttpException extends \Exception
 {
     private int $statusCode;

@@ -7,9 +7,6 @@ use App\Core\Response;
 use PHPUnit\Framework\TestCase;
 use Nyholm\Psr7\ServerRequest;
 
-/**
- * Testes para o Router.
- */
 class RouterTest extends TestCase
 {
     private Router $router;
@@ -20,19 +17,13 @@ class RouterTest extends TestCase
         $this->router = new Router();
     }
 
-    /**
-     * Testa registro de rota GET.
-     */
     public function testGetRouteRegistration(): void
     {
         $this->router->get('/test', [TestController::class, 'test']);
 
-        $this->assertTrue(true); // Se não抛 exception, passou
+        $this->assertTrue(true);
     }
 
-    /**
-     * Testa registro de rota POST.
-     */
     public function testPostRouteRegistration(): void
     {
         $this->router->post('/test', [TestController::class, 'test']);
@@ -40,9 +31,6 @@ class RouterTest extends TestCase
         $this->assertTrue(true);
     }
 
-    /**
-     * Testa rotas encadeadas (fluent interface).
-     */
     public function testFluentInterface(): void
     {
         $result = $this->router
@@ -53,28 +41,19 @@ class RouterTest extends TestCase
         $this->assertInstanceOf(Router::class, $result);
     }
 
-    /**
-     * Testa match de rota exata.
-     */
     public function testExactRouteMatch(): void
     {
         $this->router->get('/api/users', [TestController::class, 'index']);
 
-        // Simula uma requisição
         $request = new ServerRequest('GET', '/api/users');
 
-        // O router deve encontrar a rota (teste básico)
         $this->assertTrue(true);
     }
 
-    /**
-     * Testa conversão de padrão para regex.
-     */
     public function testPatternConversion(): void
     {
         $router = new Router();
 
-        // Usa reflexão para testar o método privado
         $reflection = new \ReflectionClass($router);
         $method = $reflection->getMethod('converterPadraoParaRegex');
         $method->setAccessible(true);
@@ -85,9 +64,6 @@ class RouterTest extends TestCase
     }
 }
 
-/**
- * Controller de teste.
- */
 class TestController
 {
     public function index($request)

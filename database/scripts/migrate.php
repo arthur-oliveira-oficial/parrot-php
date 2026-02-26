@@ -23,7 +23,6 @@ $capsule->bootEloquent();
 
 $schema = $capsule->schema();
 
-// Criar tabela de migrations se não existir
 if (!$schema->hasTable('migrations')) {
     $schema->create('migrations', function ($table) {
         $table->increments('id');
@@ -33,27 +32,22 @@ if (!$schema->hasTable('migrations')) {
     echo "Tabela 'migrations' criada com sucesso.\n";
 }
 
-// Obter migrations já executadas (ordem inversa para rollback)
 $executedMigrations = $capsule->table('migrations')
     ->orderBy('id', 'desc')
     ->pluck('migration')
     ->toArray();
 
-// Obter todas as migrations do banco em ordem de execução
 $allExecuted = $capsule->table('migrations')
     ->orderBy('id', 'asc')
     ->pluck('migration')
     ->toArray();
 
-// Carregar todas as migrations da pasta
 $migrationFiles = glob(__DIR__ . '/../migrations/*.php');
 sort($migrationFiles);
 
-// Verificar modo de execução
 $command = $argv[1] ?? 'migrate';
 
 if ($command === 'rollback') {
-    // Rollback da última migration ou todas
     $limit = isset($argv[2]) && $argv[2] === 'all' ? count($executedMigrations) : 1;
 
     if (empty($executedMigrations)) {
@@ -66,7 +60,6 @@ if ($command === 'rollback') {
     foreach ($toRollback as $migrationName) {
         echo "Revertendo: {$migrationName}\n";
 
-        // Encontrar o arquivo da migration
         $migrationFile = __DIR__ . '/../migrations/' . $migrationName;
 
         if (!file_exists($migrationFile)) {
@@ -80,7 +73,6 @@ if ($command === 'rollback') {
             $migrationClass->down();
         }
 
-        // Remover registro da tabela migrations
         $capsule->table('migrations')
             ->where('migration', $migrationName)
             ->delete();
@@ -92,8 +84,6 @@ if ($command === 'rollback') {
     exit(0);
 }
 
-// Modo migrate padrão
-// Filtrar apenas migrations pendentes
 $pendingMigrations = array_filter($migrationFiles, function ($file) use ($allExecuted) {
     return !in_array(basename($file), $allExecuted);
 });
@@ -110,7 +100,6 @@ foreach ($pendingMigrations as $migrationFile) {
     $migrationClass = require $migrationFile;
     $migrationClass->up();
 
-    // Registrar migration executada
     $capsule->table('migrations')->insert([
         'migration' => $migrationName,
         'executed_at' => date('Y-m-d H:i:s'),

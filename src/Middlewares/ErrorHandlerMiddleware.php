@@ -2,6 +2,22 @@
 
 declare(strict_types=1);
 
+/**
+ * Parrot PHP Framework - Error Handler Middleware
+ *
+ * Middleware de tratamento de erros.
+ * Captura todas as exceções e as converte em respostas HTTP JSON.
+ *
+ * Tipos de erros tratados:
+ * - HttpException: Erros HTTP conhecidos (400, 401, 403, 404, etc.)
+ * - Throwable: Erros genéricos do PHP (500)
+ *
+ * Em produção: oculta mensagens de erro detalhadas
+ * Em desenvolvimento: exibe mensagens para debug
+ *
+ * @see https://www.php-fig.org/psr/psr-15/ PSR-15 Middleware
+ */
+
 namespace App\Middlewares;
 
 use App\Exceptions\HttpException;
@@ -12,11 +28,25 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 
+/**
+ * Middleware de Tratamento de Erros
+ *
+ * Funciona como um "catch" global para erros.
+ * Deve ser o primeiro middleware na cadeia (externo).
+ */
 class ErrorHandlerMiddleware implements MiddlewareInterface
 {
+    /** @var bool Se deve exibir erros detalhados (development) */
     private bool $displayErrors;
     private ?LoggerInterface $logger;
 
+    /**
+     * Construtor
+     *
+     * @param ResponseFactoryInterface $responseFactory Fábrica para criar respostas de erro
+     * @param bool $displayErrors Mostrar erros detalhados (use apenas em dev)
+     * @param LoggerInterface|null $logger Sistema de logs (opcional)
+     */
     public function __construct(
         private ResponseFactoryInterface $responseFactory,
         bool $displayErrors = false,
@@ -26,6 +56,18 @@ class ErrorHandlerMiddleware implements MiddlewareInterface
         $this->logger = $logger;
     }
 
+    /**
+     * Processa a requisição capturando erros
+     *
+     * Fluxo:
+     * 1. Tenta executar o handler (próximo middleware ou controller)
+     * 2. Se HttpException: trata como erro HTTP conhecido
+     * 3. Se outra exceção: trata como erro genérico (500)
+     *
+     * @param ServerRequestInterface $request Requisição HTTP
+     * @param RequestHandlerInterface $handler Próximo na cadeia
+     * @return ResponseInterface Resposta ou erro formatado
+     */
     public function process(
         ServerRequestInterface $request,
         RequestHandlerInterface $handler

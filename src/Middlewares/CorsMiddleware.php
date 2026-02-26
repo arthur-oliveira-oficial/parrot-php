@@ -1,5 +1,26 @@
 <?php
 
+/**
+ * Parrot PHP Framework - CORS Middleware
+ *
+ * Middleware para suporte a Cross-Origin Resource Sharing (CORS).
+ *
+ * Permite que aplicações frontend em diferentes domínios
+ * façam requisições para esta API.
+ *
+ * Headers adicionados:
+ * - Access-Control-Allow-Origin: Origem permitida
+ * - Access-Control-Allow-Methods: Métodos HTTP permitidos
+ * - Access-Control-Allow-Headers: Headers permitidos
+ * - Access-Control-Max-Age: Tempo de cache do preflight
+ *
+ * Preflight (OPTIONS):
+ * - Browsers enviam requisição OPTIONS antes da requisição real
+ * - Este middleware responde automaticamente
+ *
+ * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS CORS Explained
+ */
+
 namespace App\Middlewares;
 
 use Nyholm\Psr7\Response;
@@ -8,14 +29,32 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
+/**
+ * Middleware de CORS
+ *
+ * Configuração padrão permite:
+ * - Origens: http://localhost:3000 (comum para React/Vue dev servers)
+ * - Métodos: GET, POST, PUT, PATCH, DELETE, OPTIONS
+ * - Headers: Content-Type, Authorization, X-Requested-With
+ */
 class CorsMiddleware implements MiddlewareInterface
 {
+    /** @var array Origens permitidas (domínios que podem acessar a API) */
     private readonly array $allowedOrigins;
 
+    /** @var array Métodos HTTP permitidos em requisições cross-origin */
     private readonly array $allowedMethods;
 
+    /** @var array Headers que o cliente pode enviar */
     private readonly array $allowedHeaders;
 
+    /**
+     * Construtor
+     *
+     * @param array $allowedOrigins Domínios permitidos
+     * @param array $allowedMethods Métodos HTTP permitidos
+     * @param array $allowedHeaders Headers permitidos
+     */
     public function __construct(
         array $allowedOrigins = ['http://localhost:3000'],
         array $allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

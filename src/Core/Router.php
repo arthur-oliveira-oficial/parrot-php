@@ -1,5 +1,22 @@
 <?php
 
+/**
+ * Parrot PHP Framework - Simple Router (Alternativo)
+ *
+ * Implementação simples de roteamento usando regex.
+ * Este router é uma alternativa mais simples ao FastRouteRouter.
+ *
+ * Principais diferenças do FastRouteRouter:
+ * - Não usa cache em produção
+ * - Mais simples de entender
+ * - Performance um pouco menor em aplicações grandes
+ *
+ * Este router NÃO está sendo usado atualmente - o FastRouteRouter é o padrão.
+ * Mantido para fins de compatibilidade/alternativa.
+ *
+ * @see FastRouteRouter Versão recomendada com FastRoute
+ */
+
 namespace App\Core;
 
 use Psr\Container\ContainerInterface;
@@ -8,16 +25,39 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Http\Server\MiddlewareInterface;
 
+/**
+ * Router Simples (Alternativo)
+ *
+ * Implementa roteamento básico usando expressões regulares.
+ * Funciona similar ao FastRouteRouter mas sem a biblioteca FastRoute.
+ *
+ * Formato de rotas:
+ * - /caminho - rota fixa
+ * - /caminho/{param} - parâmetro dinâmico
+ *
+ * @package App\Core
+ * @deprecated Use FastRouteRouter em produção
+ */
 class Router implements RequestHandlerInterface
 {
+    /** @var array Armazena rotas: chave "METODO /caminho", valor [destino, regex, params, middleware] */
     private array $rotas = [];
 
+    /** @var array Parâmetros capturados da URL atual */
     private array $params = [];
 
+    /** @var ContainerInterface|null Container de dependências */
     private ?ContainerInterface $container = null;
 
+    /** @var array Middlewares globais */
     private array $middlewares = [];
 
+    /**
+     * Define o container de dependências
+     *
+     * @param ContainerInterface $container
+     * @return self
+     */
     public function setContainer(ContainerInterface $container): self
     {
         $this->container = $container;
@@ -77,8 +117,20 @@ class Router implements RequestHandlerInterface
         return $this;
     }
 
+    /**
+     * Adiciona uma rota ao router
+     *
+     * Converte o caminho em regex para comparação posterior.
+     * Suporta parâmetros dinâmicos: /usuarios/{id}
+     *
+     * @param string $metodo Método HTTP
+     * @param string $caminho Caminho da rota
+     * @param array|callable Destino [Controller, 'metodo'] ou closure
+     * @return self
+     */
     public function addRoute(string $metodo, string $caminho, array|callable $destino): self
     {
+        // Normaliza o caminho (remove trailing slash)
         $caminho = rtrim($caminho, '/');
         if ($caminho === '') {
             $caminho = '/';
@@ -90,20 +142,22 @@ class Router implements RequestHandlerInterface
         $nomesParametros = [];
         $middlewareRota = null;
 
-        if (is_array($caminho)) {
-        }
-
+        // Detecta parâmetros dinâmicos como {id}, {slug}, etc.
         if (strpos($caminho, '{') !== false) {
+            // Converte {param} para regex ([^/]+)
             $regexCompilado = $this->converterPadraoParaRegex($caminho);
+            // Extrai nomes dos parâmetros
             preg_match_all('/\{(\w+)\}/', $caminho, $nomesParametros);
             $nomesParametros = $nomesParametros[1];
         }
 
+        // Extrai middleware se especificado
         if (is_array($destino) && count($destino) === 3 && is_string($destino[2])) {
             $middlewareRota = $destino[2];
             $destino = [$destino[0], $destino[1]];
         }
 
+        // Armazena: [destino, regex_compilado, nomes_params, middleware]
         $this->rotas[$chave] = [
             $destino,
             $regexCompilado,
@@ -193,10 +247,21 @@ class Router implements RequestHandlerInterface
         return null;
     }
 
+    /**
+     * Converte padrão de rota em expressão regular
+     *
+     * Transforma /usuarios/{id} em regex: #^/usuarios/([^/]+)$#
+     * O padrão ([^/]+) captura qualquer字符que não seja /
+     *
+     * @param string $padrao Caminho com parâmetros {param}
+     * @return string Regex pronto para preg_match
+     */
     private function converterPadraoParaRegex(string $padrao): string
     {
+        // Substitui {param} por ([^/]+) - captura tudo exceto /
         $regex = preg_replace('/\{(\w+)\}/', '([^/]+)', $padrao);
 
+        // Adiciona âncoras de início e fim
         return '#^' . $regex . '$#';
     }
 

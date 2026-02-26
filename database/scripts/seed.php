@@ -1,5 +1,20 @@
 <?php
 
+/**
+ * ===========================================
+ * Script de Seeds
+ * ===========================================
+ *
+ * Executa seeds para popular o banco de dados com dados iniciais.
+ *
+ * Uso:
+ *   php database/scripts/seed.php
+ *
+ * Seeds disponíveis em database/seed/
+ *
+ * @see database/seed/ Arquivos de seed
+ */
+
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__, 2));

@@ -1,5 +1,20 @@
 <?php
 
+/**
+ * ===========================================
+ * Script de Migrations
+ * ===========================================
+ *
+ * Executa migrations de banco de dados.
+ *
+ * Uso:
+ *   php database/scripts/migrate.php        - Executa migrations pendentes
+ *   php database/scripts/migrate.php rollback - Reverte última migration
+ *   php database/scripts/migrate.php rollback all - Reverte todas as migrations
+ *
+ * @see database/migrations/ Arquivo de migrations
+ */
+
 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__, 2));

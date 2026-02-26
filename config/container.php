@@ -1,5 +1,27 @@
 <?php
 
+/**
+ * ===========================================
+ * Configuração do Container (PHP-DI)
+ * ===========================================
+ *
+ * Este arquivo define todas as dependências da aplicação
+ * usando o container de injeção de dependência PHP-DI.
+ *
+ * O container gerencia:
+ * - Criação de objetos (factories)
+ * - Injeção de dependências
+ * - Singletons quando necessário
+ *
+ * Configurações disponíveis no .env:
+ * - DB_DRIVER, DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+ * - JWT_SECRET, JWT_EXPIRY
+ * - CORS_ALLOWED_ORIGINS
+ * - RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_SECONDS
+ *
+ * @see https://php-di.org/ PHP-DI Documentation
+ */
+
 use App\Controllers\UserController;
 use App\Controllers\AuthController;
 use App\Core\DatabaseCapsule;
@@ -13,11 +35,25 @@ use App\Views\UserResource;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Psr\Http\Message\ResponseFactoryInterface;
 
+/**
+ * Helper para obter variáveis de ambiente
+ *
+ * Combina $_ENV, $_SERVER e getenv() para máxima compatibilidade.
+ *
+ * @param string $key Nome da variável
+ * @param mixed $default Valor padrão
+ * @return mixed Valor da variável ou padrão
+ */
 function env_config(string $key, mixed $default = null): mixed
 {
     return $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key) ?: $default;
 }
 
+/**
+ * Definições do Container
+ *
+ * Array de dependências retornado para o PHP-DI.
+ */
 return [
     ResponseFactoryInterface::class => new Psr17Factory(),
 

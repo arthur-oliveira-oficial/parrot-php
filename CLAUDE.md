@@ -1,169 +1,137 @@
 # Parrot PHP Framework
 
-A custom micro-framework PHP for building REST APIs, built with Laravel components and PSR-compliant libraries.
+Parrot PHP is a modern micro-framework for building REST APIs in PHP 8.4+, built with Laravel components and PSR-compliant libraries.
 
 ## Project Overview
 
-- **Type**: Micro-framework PHP for REST APIs
+- **Type**: REST API Micro-framework
 - **PHP Version**: 8.4+
-- **License**: MIT
+- **Standards**: PSR-7 (HTTP Messages), PSR-15 (HTTP Middlewares)
 
-## Tech Stack
-
-| Component | Library |
-|-----------|---------|
-| Routing | FastRoute (nikic/fast-route) |
-| ORM | Laravel Eloquent (illuminate/database) |
-| Container | PHP-DI (php-di/php-di) |
-| HTTP Messages | PSR-7 (nyholm/psr7) |
-| Server Request | nyholm/psr7-server |
-| Environment | vlucas/phpdotenv |
-
-## Directory Structure
+## Project Structure
 
 ```
-/var/www/html/parrot-php/
-├── public/                  # Web root - entry point
-│   └── index.php           # Front controller
+parrot-php/
+├── public/
+│   └── index.php              # Front controller entry point
 ├── src/
-│   ├── Core/               # Framework core
-│   │   ├── Application.php
-│   │   ├── Router.php
-│   │   ├── FastRouteRouter.php
-│   │   ├── DatabaseCapsule.php
-│   │   ├── Request.php
-│   │   ├── Response.php
-│   │   └── MiddlewareQueue.php
-│   ├── Controllers/        # HTTP Controllers
-│   │   ├── Controller.php
-│   │   ├── AuthController.php
-│   │   └── UserController.php
-│   ├── Models/              # Eloquent Models
-│   │   ├── Model.php
-│   │   ├── EloquentModel.php
-│   │   └── UserModel.php
-│   ├── Middlewares/         # HTTP Middlewares (PSR-15)
-│   │   ├── CorsMiddleware.php
+│   ├── Core/
+│   │   ├── Application.php    # Main orchestrator (PSR-15 RequestHandler)
+│   │   ├── FastRouteRouter.php # FastRoute-based router
+│   │   ├── Router.php         # Simple custom router (deprecated)
+│   │   ├── MiddlewareQueue.php # Middleware pipeline (Onion Pattern)
+│   │   ├── Response.php       # PSR-7 response helpers
+│   │   ├── Request.php        # PSR-7 request helpers
+│   │   └── DatabaseCapsule.php # Laravel Eloquent wrapper
+│   ├── Controllers/
+│   │   ├── Controller.php     # Abstract base controller
+│   │   ├── AuthController.php # Authentication (login, logout, me)
+│   │   └── UserController.php  # User CRUD operations
+│   ├── Models/
+│   │   ├── Model.php          # Base PDO model
+│   │   ├── EloquentModel.php  # Laravel Eloquent base
+│   │   └── UserModel.php      # User model with SoftDeletes
+│   ├── Middlewares/
+│   │   ├── ErrorHandlerMiddleware.php
 │   │   ├── JwtAuthMiddleware.php
+│   │   ├── CorsMiddleware.php
 │   │   ├── RateLimitMiddleware.php
-│   │   ├── SecurityHeadersMiddleware.php
-│   │   └── ErrorHandlerMiddleware.php
-│   ├── Views/               # JSON Response Formatters
-│   │   ├── Resource.php
-│   │   └── UserResource.php
-│   └── Exceptions/          # HTTP Exceptions
-│       ├── HttpException.php
-│       ├── NotFoundException.php
-│       ├── UnauthorizedException.php
-│       ├── ForbiddenException.php
-│       ├── BadRequestException.php
-│       └── MethodNotAllowedException.php
+│   │   └── SecurityHeadersMiddleware.php
+│   ├── Exceptions/
+│   │   ├── HttpException.php
+│   │   ├── NotFoundException.php
+│   │   ├── UnauthorizedException.php
+│   │   ├── ForbiddenException.php
+│   │   ├── BadRequestException.php
+│   │   └── MethodNotAllowedException.php
+│   └── Views/
+│       ├── Resource.php       # Base API resource/transformer
+│       └── UserResource.php   # User response transformer
 ├── config/
-│   ├── routes.php           # Route definitions
-│   ├── container.php        # PHP-DI configuration
-│   └── middlewares.php       # Global middleware stack
-├── database/
-│   ├── migrations/         # Database migrations
-│   └── seeds/              # Database seeds
-├── tests/                   # PHPUnit tests
-├── .env                     # Environment variables
-└── composer.json            # Dependencies
+│   ├── routes.php            # API route definitions
+│   ├── middlewares.php       # Global middleware stack
+│   └── container.php         # PHP-DI dependency definitions
+├── tests/                    # Unit tests
+└── .env                     # Environment configuration
 ```
 
 ## API Endpoints
 
-### Authentication
-| Method | Endpoint | Middleware | Description |
-|--------|----------|------------|-------------|
-| POST | `/api/auth/login` | None | User login |
-| POST | `/api/auth/logout` | None | User logout |
-| GET | `/api/auth/me` | JWT | Get current user |
+| Method | Endpoint | Handler | Auth |
+|--------|----------|---------|------|
+| POST | /api/auth/login | AuthController::login | Public |
+| POST | /api/auth/logout | AuthController::logout | Public |
+| GET | /api/auth/me | AuthController::me | JWT |
+| GET | /api/usuarios | UserController::index | JWT |
+| GET | /api/usuarios/{id} | UserController::show | JWT |
+| POST | /api/usuarios | UserController::store | JWT |
+| PUT | /api/usuarios/{id} | UserController::update | JWT |
+| DELETE | /api/usuarios/{id} | UserController::destroy | JWT |
 
-### Users (CRUD)
-| Method | Endpoint | Middleware | Description |
-|--------|----------|------------|-------------|
-| GET | `/api/usuarios` | JWT | List all users |
-| GET | `/api/usuarios/{id}` | JWT | Get user by ID |
-| POST | `/api/usuarios` | JWT | Create new user |
-| PUT | `/api/usuarios/{id}` | JWT | Update user |
-| DELETE | `/api/usuarios/{id}` | JWT | Delete user |
-
-## Configuration (.env)
+## Useful Commands
 
 ```bash
-# Application
+# Install dependencies
+composer install
+
+# Start development server
+php -S localhost:8000 -t public
+
+# Run tests (if available)
+./vendor/bin/phpunit
+```
+
+## Code Patterns
+
+### Controllers
+Extend `Controller` base class which provides:
+- `$this->success($data, $statusCode)` - Return JSON success
+- `$this->error($message, $statusCode)` - Return JSON error
+- `$this->getParam($name)` - Get route parameter
+- `$this->getBody()` - Get request body
+- `$this->getUserId()` - Get authenticated user ID from JWT
+- `$this->validate($rules)` - Validate request data
+
+### Models
+- Use Laravel Eloquent ORM with SoftDeletes trait
+- Table: `usuarios` (users)
+- Fields: id, nome, email, senha, tipo, created_at, updated_at, deletado_em
+
+### Exceptions
+Throw custom exceptions for HTTP errors:
+- `throw new NotFoundException('message')` - 404
+- `throw new UnauthorizedException('message')` - 401
+- `throw new ForbiddenException('message')` - 403
+- `throw new BadRequestException('message')` - 400
+
+### Responses
+Use Resource classes to transform responses:
+- `new UserResource($user)` - Transform user model
+- `new UserResource($user)->toArray()`
+
+## Dependencies
+
+- **nikic/fast-route** - Routing
+- **illuminate/database** - Laravel Eloquent ORM
+- **nyholm/psr7** / **nyholm/psr7-server** - PSR-7 HTTP messages
+- **php-di/php-di** - Dependency injection
+- **vlucas/phpdotenv** - Environment variables
+- **firebase/php-jwt** - JWT authentication
+
+## Environment Variables (.env)
+
+```
 APP_ENV=development
 APP_DEBUG=true
-APP_URL=http://localhost:8000
-
-# Database (MySQL/MariaDB)
 DB_DRIVER=mysql
 DB_HOST=localhost
 DB_PORT=3306
 DB_NAME=parrot_db
 DB_USER=root
-DB_PASSWORD=your_password
-
-# JWT Authentication
-JWT_SECRET=your-secret-key
+DB_PASSWORD=***
+JWT_SECRET=***
 JWT_EXPIRY=3600
-
-# CORS
 CORS_ALLOWED_ORIGINS=http://localhost:3000
-
-# Rate Limiting
 RATE_LIMIT_MAX_REQUESTS=60
 RATE_LIMIT_WINDOW_SECONDS=60
 ```
-
-## Dependencies Injection
-
-The framework uses PHP-DI for dependency injection. Configuration is in `config/container.php`.
-
-Key services:
-- `App\Core\Router` - Route dispatcher
-- `App\Core\DatabaseCapsule` - Eloquent database connection
-- `Psr\Http\Message\ServerRequestInterface` - Current HTTP request
-
-## Running the Project
-
-### Start Development Server
-```bash
-php -S localhost:8000 -t public/
-```
-
-### Run Tests
-```bash
-vendor/bin/phpunit
-```
-
-## Architecture Notes
-
-### Request Flow
-1. Request hits `public/index.php`
-2. Environment variables loaded via phpdotenv
-3. PHP-DI container is configured
-4. Global middlewares execute (ErrorHandler, Security, RateLimit, CORS)
-5. Router dispatches to controller
-6. Controller returns response
-
-### Middleware Stack (Order)
-1. ErrorHandlerMiddleware - Catches all exceptions
-2. SecurityHeadersMiddleware - Adds security headers
-3. RateLimitMiddleware - Rate limiting
-4. CorsMiddleware - CORS headers
-
-### Adding New Routes
-Edit `config/routes.php`:
-```php
-return [
-    'METHOD /path' => [Controller::class, 'method'],
-    'METHOD /path' => [Controller::class, 'method', Middleware::class],
-];
-```
-
-### Creating New Controllers
-Extend `App\Controllers\Controller` base class and use `json()` helper method.
-
-### Creating New Models
-Extend `App\Models\EloquentModel` for Eloquent models with soft deletes, or `App\Models\Model` for base functionality.

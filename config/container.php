@@ -79,6 +79,11 @@ return [
             'max_requests' => (int) (env_config('RATE_LIMIT_MAX_REQUESTS', 60)),
             'window_seconds' => (int) (env_config('RATE_LIMIT_WINDOW_SECONDS', 60)),
         ],
+        // Rate limit específico para login (prevenção de brute force)
+        'rate_limit_login' => [
+            'max_requests' => (int) (env_config('RATE_LIMIT_LOGIN_MAX_REQUESTS', 5)),
+            'window_seconds' => (int) (env_config('RATE_LIMIT_LOGIN_WINDOW_SECONDS', 900)),
+        ],
     ],
 
     DatabaseCapsule::class => function ($container) {
@@ -93,6 +98,15 @@ return [
 
     RateLimitMiddleware::class => function ($container) {
         $rateLimitConfig = $container->get('config')['rate_limit'];
+        return new RateLimitMiddleware(
+            $rateLimitConfig['max_requests'],
+            $rateLimitConfig['window_seconds']
+        );
+    },
+
+    // Rate limit específico para rotas de autenticação (5 tentativas a cada 15 minutos)
+    'rate_limit_login' => function ($container) {
+        $rateLimitConfig = $container->get('config')['rate_limit_login'];
         return new RateLimitMiddleware(
             $rateLimitConfig['max_requests'],
             $rateLimitConfig['window_seconds']

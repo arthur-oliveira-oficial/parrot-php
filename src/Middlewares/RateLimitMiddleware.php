@@ -214,10 +214,21 @@ class RateLimitMiddleware implements MiddlewareInterface
 
             // Se o IP de origem é um proxy confiável, usar X-Forwarded-For
             if (in_array($remoteAddr, $trustedList, true)) {
+                // Primeiro, verificar Cloudflare (mais seguro)
+                $cfIp = $request->getHeaderLine('CF-Connecting-IP');
+                if (!empty($cfIp) && filter_var(trim($cfIp), FILTER_VALIDATE_IP)) {
+                    return trim($cfIp);
+                }
+
+                // Fallback para X-Forwarded-For - pega o ÚLTIMO IP da cadeia
+                // pois foi adicionado pelo proxy confiável no momento da conexão
                 $forwardedFor = $request->getHeaderLine('X-Forwarded-For');
                 if (!empty($forwardedFor)) {
-                    $ips = explode(',', $forwardedFor);
-                    return trim($ips[0]);
+                    $ips = array_map('trim', explode(',', $forwardedFor));
+                    $lastIp = end($ips);
+                    if (filter_var($lastIp, FILTER_VALIDATE_IP)) {
+                        return $lastIp;
+                    }
                 }
             }
         }

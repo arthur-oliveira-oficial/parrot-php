@@ -145,7 +145,7 @@ class UserController extends Controller
 
         $existing = $this->model->findByEmail($body['email']);
         if ($existing) {
-            return $this->error('Email já está em uso', 422);
+            return $this->error('Não foi possível processar o registo com os dados fornecidos.', 422);
         }
 
         // Usuários criados via API são sempre tipo 'user'
@@ -195,11 +195,26 @@ class UserController extends Controller
             return $this->error('Nenhum dado para atualizar', 422);
         }
 
+        // Validação de segurança: exigir senha atual para alterar credenciais
+        $tentandoAlterarEmail = isset($body['email']) && $body['email'] !== $usuario['email'];
+        $tentandoAlterarSenha = !empty($body['senha']);
+
+        if ($tentandoAlterarEmail || $tentandoAlterarSenha) {
+            if (empty($body['senha_atual'])) {
+                return $this->error('A senha atual é obrigatória para alterar o email ou a senha', 403);
+            }
+
+            $senhaValida = $this->model->verificarSenha($usuario['email'], $body['senha_atual']);
+            if (!$senhaValida) {
+                return $this->error('A senha atual está incorreta', 403);
+            }
+        }
+
         // Verifica se email já está em uso (se alterado)
         if (isset($body['email']) && $body['email'] !== $usuario['email']) {
             $existing = $this->model->findByEmail($body['email']);
             if ($existing) {
-                return $this->error('Email já está em uso', 422);
+                return $this->error('Não foi possível processar a atualização com os dados fornecidos.', 422);
             }
         }
 

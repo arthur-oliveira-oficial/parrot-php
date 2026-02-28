@@ -52,9 +52,6 @@ class UserModel extends EloquentModel
     /** @var array Campos que podem ser preenchidos em massa (mass assignment) */
     protected $fillable = ['nome', 'email', 'senha'];
 
-    /** @var array Campos protegidos contra mass assignment */
-    protected $guarded = ['tipo'];
-
     /** @var array Campos que não aparecem na serialização JSON */
     protected $hidden = ['senha'];
 

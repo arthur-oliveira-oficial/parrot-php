@@ -1,139 +1,106 @@
 <?php
 
-namespace Tests;
+declare(strict_types=1);
 
-use App\Core\Router;
-use App\Core\Response;
-use App\Controllers\AuthController;
-use App\Models\UserModel;
-use App\Views\UserResource;
-use PHPUnit\Framework\TestCase;
-use Nyholm\Psr7\ServerRequest;
-use Nyholm\Psr7\Response as PsrResponse;
+namespace Tests;
 
 class AuthTest extends TestCase
 {
-    private Router $router;
-    private AuthController $authController;
-    private UserModel $userModel;
-    private UserResource $userResource;
-
-    protected function setUp(): void
+    public function testLoginSucesso(): void
     {
-        parent::setUp();
-        $this->router = new Router();
+        $response = $this->call('POST', '/api/auth/login', [
+            'email' => 'admin@parrot.com',
+            'senha' => 'admin123'
+        ]);
 
-        $this->userModel = new UserModel();
-        $this->userResource = new UserResource();
-        $this->authController = new AuthController($this->userModel, $this->userResource);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('token=', $response->getHeaderLine('Set-Cookie'));
+
+        $body = $this->getJsonBody($response);
+        $this->assertArrayHasKey('data', $body);
+        $this->assertArrayHasKey('token', $body);
     }
 
-    public function testAuthControllerCanBeInstantiated(): void
+    public function testLoginSenhaIncorreta(): void
     {
-        $this->assertInstanceOf(AuthController::class, $this->authController);
+        $response = $this->call('POST', '/api/auth/login', [
+            'email' => 'admin@parrot.com',
+            'senha' => 'senha_errada'
+        ]);
+
+        $this->assertEquals(401, $response->getStatusCode());
+
+        $body = $this->getJsonBody($response);
+        $this->assertArrayHasKey('error', $body);
     }
 
-    public function testTokenGenerationUsesHs256(): void
+    public function testLoginUsuarioNaoExistente(): void
     {
-        $reflection = new \ReflectionClass($this->authController);
-        $method = $reflection->getMethod('gerarToken');
-        $method->setAccessible(true);
+        $response = $this->call('POST', '/api/auth/login', [
+            'email' => 'naoexiste@parrot.com',
+            'senha' => 'qualquer_senha'
+        ]);
 
-        $usuario = [
-            'id' => 1,
-            'email' => 'test@example.com',
-            'tipo' => 'user'
-        ];
+        $this->assertEquals(401, $response->getStatusCode());
 
-        $token = $method->invoke($this->authController, $usuario);
-
-        $parts = explode('.', $token);
-        $this->assertCount(3, $parts, 'Token JWT deve ter 3 partes');
-
-        $header = json_decode(base64_decode(strtr($parts[0], '-_', '+/')), true);
-        $this->assertEquals('HS256', $header['alg'] ?? null, 'Algoritmo deve ser HS256');
+        $body = $this->getJsonBody($response);
+        $this->assertArrayHasKey('error', $body);
     }
 
-    public function testTokenPayloadContainsRequiredFields(): void
+    public function testLoginDadosInvalidos(): void
     {
-        $reflection = new \ReflectionClass($this->authController);
-        $method = $reflection->getMethod('gerarToken');
-        $method->setAccessible(true);
+        $response = $this->call('POST', '/api/auth/login', []);
 
-        $usuario = [
-            'id' => 42,
-            'email' => 'test@example.com',
-            'tipo' => 'admin'
-        ];
+        $this->assertEquals(422, $response->getStatusCode());
 
-        $token = $method->invoke($this->authController, $usuario);
-
-        $parts = explode('.', $token);
-        $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-
-        $this->assertEquals('42', $payload['sub'] ?? null, 'Payload deve conter subject (sub)');
-        $this->assertEquals('test@example.com', $payload['email'] ?? null, 'Payload deve conter email');
-        $this->assertEquals('admin', $payload['tipo'] ?? null, 'Payload deve conter tipo');
-        $this->assertArrayHasKey('iat', $payload, 'Payload deve conter iat');
-        $this->assertArrayHasKey('exp', $payload, 'Payload deve conter exp');
+        $body = $this->getJsonBody($response);
+        $this->assertArrayHasKey('error', $body);
     }
 
-    public function testBase64UrlEncoding(): void
+    public function testLoginEmailInvalido(): void
     {
-        $reflection = new \ReflectionClass($this->authController);
-        $method = $reflection->getMethod('base64UrlEncode');
-        $method->setAccessible(true);
+        $response = $this->call('POST', '/api/auth/login', [
+            'email' => 'email_invalido',
+            'senha' => 'qualquer_senha'
+        ]);
 
-        $testString = 'Hello+World/Test';
-        $encoded = $method->invoke($this->authController, $testString);
-
-        $this->assertStringNotContainsString('+', $encoded);
-        $this->assertStringNotContainsString('/', $encoded);
-        $this->assertStringNotContainsString('=', $encoded);
-
-        $decoded = base64_decode(strtr($encoded, '-_', '+/'));
-        $this->assertEquals($testString, $decoded);
+        // Sistema retorna 401 para email inválido (trata como credenciais inválidas)
+        $this->assertEquals(401, $response->getStatusCode());
     }
 
-    public function testAuthRoutesRegistration(): void
+    public function testLogout(): void
     {
-        $this->router->post('/api/auth/login', [AuthController::class, 'login']);
-        $this->router->post('/api/auth/logout', [AuthController::class, 'logout']);
-        $this->router->get('/api/auth/me', [AuthController::class, 'me']);
+        // Primeiro faz login para obter token
+        $token = $this->getJwtToken('admin@parrot.com', 'admin123');
 
-        $this->assertTrue(true);
+        // Agora faz logout
+        $response = $this->call('POST', '/api/auth/logout', [], [], $token);
+
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $body = $this->getJsonBody($response);
+        $this->assertArrayHasKey('message', $body);
     }
 
-    public function testValidationRequiresEmailAndSenha(): void
+    public function testMe(): void
     {
-        $body = [];
-        $errors = [];
+        // Primeiro faz login para obter token
+        $token = $this->getJwtToken('admin@parrot.com', 'admin123');
 
-        if (empty($body['email'])) {
-            $errors[] = 'email é obrigatório';
-        }
-        if (empty($body['senha'])) {
-            $errors[] = 'senha é obrigatória';
-        }
+        // Agora chama /me
+        $response = $this->call('GET', '/api/auth/me', [], [], $token);
 
-        $this->assertCount(2, $errors);
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $body = $this->getJsonBody($response);
+        $this->assertArrayHasKey('data', $body);
+        $this->assertEquals('admin@parrot.com', $body['data']['email']);
     }
 
-    public function testTokenExpiryIsSet(): void
+    public function testMeSemAutenticacao(): void
     {
-        $_ENV['JWT_EXPIRY'] = 7200;
+        $response = $this->call('GET', '/api/auth/me');
 
-        $reflection = new \ReflectionClass($this->authController);
-        $method = $reflection->getMethod('gerarToken');
-        $method->setAccessible(true);
-
-        $usuario = ['id' => 1, 'email' => 'test@test.com', 'tipo' => 'user'];
-        $token = $method->invoke($this->authController, $usuario);
-
-        $parts = explode('.', $token);
-        $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-
-        $expectedExpiry = time() + 7200;
-        $this->assertEquals($expectedExpiry, $payload['exp'], 'Exp deve ser iat + JWT_EXPIRY', 2);
+        $this->assertEquals(401, $response->getStatusCode());
     }
 }

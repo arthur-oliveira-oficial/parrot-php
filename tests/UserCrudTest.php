@@ -1,161 +1,231 @@
 <?php
 
-namespace Tests;
+declare(strict_types=1);
 
-use App\Core\Router;
-use App\Controllers\UserController;
-use App\Models\UserModel;
-use App\Views\UserResource;
-use App\Views\Resource;
-use PHPUnit\Framework\TestCase;
-use Nyholm\Psr7\ServerRequest;
-use Nyholm\Psr7\Response as PsrResponse;
+namespace Tests;
 
 class UserCrudTest extends TestCase
 {
-    private Router $router;
-    private UserController $userController;
-    private UserModel $userModel;
-    private UserResource $userResource;
+    private int $adminUserId = 1;
+    private ?int $normalUserId = null;
+    private string $normalUserEmail = 'usuario@parrot.com';
+    private string $normalUserPassword = 'senha123';
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->router = new Router();
-        $this->userModel = new UserModel();
-        $this->userResource = new UserResource();
-        $this->userController = new UserController($this->userModel, $this->userResource);
+
+        // Criar usuário normal para testes (se não existir)
+        $this->criarUsuarioNormalSeNaoExistir();
     }
 
-    public function testUserControllerCanBeInstantiated(): void
+    private function criarUsuarioNormalSeNaoExistir(): void
     {
-        $this->assertInstanceOf(UserController::class, $this->userController);
-    }
+        // Tenta fazer login com usuário normal para ver se existe
+        $response = $this->call('POST', '/api/auth/login', [
+            'email' => $this->normalUserEmail,
+            'senha' => $this->normalUserPassword
+        ]);
 
-    public function testCrudRoutesRegistration(): void
-    {
-        $this->router->get('/api/usuarios', [UserController::class, 'index']);
-        $this->router->get('/api/usuarios/{id}', [UserController::class, 'show']);
-        $this->router->post('/api/usuarios', [UserController::class, 'store']);
-        $this->router->put('/api/usuarios/{id}', [UserController::class, 'update']);
-        $this->router->delete('/api/usuarios/{id}', [UserController::class, 'destroy']);
-
-        $this->assertTrue(true);
-    }
-
-    public function testRoutePatternConversion(): void
-    {
-        $router = new Router();
-        $router->get('/api/usuarios/{id}', [UserController::class, 'show']);
-
-        $reflection = new \ReflectionClass($router);
-        $method = $reflection->getMethod('converterPadraoParaRegex');
-        $method->setAccessible(true);
-
-        $result = $method->invoke($router, '/api/usuarios/{id}');
-        $this->assertEquals('#^/api/usuarios/([^/]+)$#', $result);
-    }
-
-    public function testValidationForCreateUser(): void
-    {
-        $body = [
-            'nome' => 'João',
-        ];
-
-        $errors = [];
-
-        if (empty($body['nome'])) {
-            $errors[] = 'nome é obrigatório';
-        }
-        if (empty($body['email'])) {
-            $errors[] = 'email é obrigatório';
-        }
-        if (empty($body['senha'])) {
-            $errors[] = 'senha é obrigatória';
+        if ($response->getStatusCode() === 200) {
+            // Usuário já existe, pega o ID
+            $body = $this->getJsonBody($response);
+            $this->normalUserId = (int) $body['data']['id'];
+            return;
         }
 
-        $this->assertCount(2, $errors);
-    }
+        // Cria usuário normal via API de criação
+        // Primeiro faz login como admin
+        $adminToken = $this->getJwtToken('admin@parrot.com', 'admin123');
 
-    public function testEmailValidation(): void
-    {
-        $emailsValidos = [
-            'test@example.com',
-            'user.name@domain.org',
-            'user+tag@example.co.uk'
-        ];
+        // Cria usuário normal
+        $response = $this->call('POST', '/api/usuarios', [
+            'nome' => 'Usuario Normal',
+            'email' => $this->normalUserEmail,
+            'senha' => $this->normalUserPassword
+        ], [], $adminToken);
 
-        $emailsInvalidos = [
-            'not-an-email',
-            '@nodomain.com',
-            'no@',
-            ''
-        ];
-
-        foreach ($emailsValidos as $email) {
-            $this->assertTrue(filter_var($email, FILTER_VALIDATE_EMAIL) !== false, "{$email} deve ser válido");
-        }
-
-        foreach ($emailsInvalidos as $email) {
-            $this->assertTrue(filter_var($email, FILTER_VALIDATE_EMAIL) === false, "{$email} deve ser inválido");
+        // Armazena o ID do usuário criado
+        $body = $this->getJsonBody($response);
+        if (isset($body['data']['id'])) {
+            $this->normalUserId = (int) $body['data']['id'];
         }
     }
 
-    public function testUserTypeValidation(): void
+    public function testListarUsuariosAdmin(): void
     {
-        $tiposValidos = ['admin', 'user'];
-        $tiposInvalidos = ['superadmin', 'guest', 'moderator', ''];
+        // Admin pode listar todos os usuários
+        $token = $this->getJwtToken('admin@parrot.com', 'admin123');
 
-        foreach ($tiposValidos as $tipo) {
-            $this->assertContains($tipo, $tiposValidos, "{$tipo} deve ser válido");
-        }
+        $response = $this->call('GET', '/api/usuarios', [], [], $token);
 
-        foreach ($tiposInvalidos as $tipo) {
-            $this->assertNotContains($tipo, $tiposValidos, "{$tipo} deve ser inválido");
-        }
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $body = $this->getJsonBody($response);
+        $this->assertArrayHasKey('data', $body);
+        $this->assertIsArray($body['data']);
     }
 
-    public function testUserModelHasExpectedMethods(): void
+    public function testListarUsuariosNaoAdmin(): void
     {
-        $model = new UserModel();
+        // Usuário comum não pode listar todos os usuários
+        $token = $this->getJwtToken($this->normalUserEmail, $this->normalUserPassword);
 
-        $this->assertTrue(method_exists($model, 'findByEmail'), 'Model deve ter método findByEmail');
-        $this->assertTrue(method_exists($model, 'findWithoutTrashed'), 'Model deve ter método findWithoutTrashed');
-        $this->assertTrue(method_exists($model, 'buscarPorId'), 'Model deve ter método buscarPorId');
-        $this->assertTrue(method_exists($model, 'criarUsuario'), 'Model deve ter método criarUsuario');
-        $this->assertTrue(method_exists($model, 'atualizarUsuario'), 'Model deve ter método atualizarUsuario');
-        $this->assertTrue(method_exists($model, 'softDelete'), 'Model deve ter método softDelete');
-        $this->assertTrue(method_exists($model, 'verificarSenha'), 'Model deve ter método verificarSenha');
+        $response = $this->call('GET', '/api/usuarios', [], [], $token);
+
+        $this->assertEquals(403, $response->getStatusCode());
     }
 
-    public function testUserResourceExtendsResource(): void
+    public function testExibirUsuarioProprio(): void
     {
-        $this->assertInstanceOf(Resource::class, $this->userResource);
+        // Usuário normal pode ver seus próprios dados
+        $token = $this->getJwtToken($this->normalUserEmail, $this->normalUserPassword);
+
+        $response = $this->call('GET', "/api/usuarios/{$this->normalUserId}", [], [], $token);
+
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $body = $this->getJsonBody($response);
+        $this->assertEquals($this->normalUserEmail, $body['data']['email']);
     }
 
-    public function testPasswordHashing(): void
+    public function testExibirOutroUsuario(): void
     {
-        $senha = 'minhaSenha123';
-        $hash = password_hash($senha, PASSWORD_DEFAULT);
+        // Usuário normal não pode ver dados de outro usuário (IDOR)
+        $token = $this->getJwtToken($this->normalUserEmail, $this->normalUserPassword);
 
-        $this->assertTrue(password_verify($senha, $hash), 'Senha deve verificar corretamente');
-        $this->assertTrue(password_verify('senha_errada', $hash) === false, 'Senha errada não deve verificar');
-        $this->assertTrue(password_needs_rehash($hash, PASSWORD_DEFAULT) === false, 'Hash não precisa de rehash');
+        // Tenta acessar o admin (ID 1)
+        $response = $this->call('GET', '/api/usuarios/1', [], [], $token);
+
+        $this->assertEquals(403, $response->getStatusCode());
     }
 
-    public function testUserModelTableName(): void
+    public function testExibirAdminPorAdmin(): void
     {
-        $model = new UserModel();
-        $table = $model->getTable();
+        // Admin pode ver qualquer usuário
+        $token = $this->getJwtToken('admin@parrot.com', 'admin123');
 
-        $this->assertEquals('usuarios', $table);
+        $response = $this->call('GET', "/api/usuarios/{$this->normalUserId}", [], [], $token);
+
+        $this->assertEquals(200, $response->getStatusCode());
     }
 
-    public function testUserModelUsesSoftDeletes(): void
+    public function testCriarUsuario(): void
     {
-        $model = new UserModel();
-        $uses = trait_exists('Illuminate\Database\Eloquent\SoftDeletes');
+        $adminToken = $this->getJwtToken('admin@parrot.com', 'admin123');
 
-        $this->assertTrue($uses || in_array('Illuminate\Database\Eloquent\SoftDeletes', class_uses($model)), 'Model deve usar SoftDeletes');
+        // Email único para evitar conflito
+        $email = 'novo_' . time() . '@parrot.com';
+
+        $response = $this->call('POST', '/api/usuarios', [
+            'nome' => 'Novo Usuario',
+            'email' => $email,
+            'senha' => 'senhaForte123'
+        ], [], $adminToken);
+
+        $this->assertEquals(201, $response->getStatusCode());
+
+        $body = $this->getJsonBody($response);
+        $this->assertArrayHasKey('data', $body);
+        $this->assertEquals($email, $body['data']['email']);
+    }
+
+    public function testCriarUsuarioEmailDuplicado(): void
+    {
+        $adminToken = $this->getJwtToken('admin@parrot.com', 'admin123');
+
+        // Tenta criar com email que já existe
+        $response = $this->call('POST', '/api/usuarios', [
+            'nome' => 'Novo Usuario',
+            'email' => 'admin@parrot.com',
+            'senha' => 'senhaForte123'
+        ], [], $adminToken);
+
+        $this->assertEquals(422, $response->getStatusCode());
+    }
+
+    public function testCriarUsuarioSemNome(): void
+    {
+        $adminToken = $this->getJwtToken('admin@parrot.com', 'admin123');
+
+        $response = $this->call('POST', '/api/usuarios', [
+            'email' => 'teste@parrot.com',
+            'senha' => 'senha123'
+        ], [], $adminToken);
+
+        $this->assertEquals(422, $response->getStatusCode());
+    }
+
+    public function testAtualizarUsuario(): void
+    {
+        $token = $this->getJwtToken($this->normalUserEmail, $this->normalUserPassword);
+
+        // Atualiza apenas o nome (não precisa de senha atual)
+        $response = $this->call('PUT', "/api/usuarios/{$this->normalUserId}", [
+            'nome' => 'Nome Atualizado'
+        ], [], $token);
+
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $body = $this->getJsonBody($response);
+        $this->assertEquals('Nome Atualizado', $body['data']['nome']);
+    }
+
+    public function testAtualizarSemSenhaAtual(): void
+    {
+        $token = $this->getJwtToken($this->normalUserEmail, $this->normalUserPassword);
+
+        // Tenta alterar email sem fornecer senha atual
+        $response = $this->call('PUT', "/api/usuarios/{$this->normalUserId}", [
+            'email' => 'novo@email.com'
+        ], [], $token);
+
+        $this->assertEquals(403, $response->getStatusCode());
+    }
+
+    public function testAtualizarComSenhaAtual(): void
+    {
+        $token = $this->getJwtToken($this->normalUserEmail, $this->normalUserPassword);
+
+        // Altera email fornecendo senha atual (email único)
+        $novoEmail = 'atualizado_' . time() . '@parrot.com';
+        $response = $this->call('PUT', "/api/usuarios/{$this->normalUserId}", [
+            'email' => $novoEmail,
+            'senha_atual' => $this->normalUserPassword
+        ], [], $token);
+
+        $this->assertEquals(200, $response->getStatusCode());
+    }
+
+    public function testDeletarUsuario(): void
+    {
+        // Primeiro cria um usuário para deletar
+        $adminToken = $this->getJwtToken('admin@parrot.com', 'admin123');
+        $email = 'para_deletar_' . time() . '@parrot.com';
+
+        $createResponse = $this->call('POST', '/api/usuarios', [
+            'nome' => 'Usuario para Deletar',
+            'email' => $email,
+            'senha' => 'senha123'
+        ], [], $adminToken);
+
+        $createBody = $this->getJsonBody($createResponse);
+        $userId = $createBody['data']['id'];
+
+        // Agora deleta o usuário
+        $response = $this->call('DELETE', "/api/usuarios/{$userId}", [], [], $adminToken);
+
+        $this->assertEquals(200, $response->getStatusCode());
+    }
+
+    public function testDeletarUsuarioNaoAutorizado(): void
+    {
+        // Usuário normal não pode deletar outro usuário
+        $token = $this->getJwtToken($this->normalUserEmail, $this->normalUserPassword);
+
+        // Tenta deletar o admin (ID 1)
+        $response = $this->call('DELETE', '/api/usuarios/1', [], [], $token);
+
+        $this->assertEquals(403, $response->getStatusCode());
     }
 }

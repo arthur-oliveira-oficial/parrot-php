@@ -65,7 +65,7 @@ class TokenRevogado extends EloquentModel
         try {
             self::create([
                 'jti' => $jti,
-                'revogado_em' => now(),
+                'revogado_em' => date('Y-m-d H:i:s'),
                 'expires_at' => date('Y-m-d H:i:s', $expiryTimestamp),
             ]);
             return true;
@@ -81,6 +81,6 @@ class TokenRevogado extends EloquentModel
      */
     public static function limparExpirados(): int
     {
-        return self::where('expires_at', '<', now())->delete();
+        return self::where('expires_at', '<', date('Y-m-d H:i:s'))->delete();
     }
 }

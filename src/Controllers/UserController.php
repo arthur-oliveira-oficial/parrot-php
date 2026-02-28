@@ -77,6 +77,11 @@ class UserController extends Controller
      */
     public function index(ServerRequestInterface $request): ResponseInterface
     {
+        // Apenas administradores podem listar todos os utilizadores
+        if ($request->getAttribute('user_tipo') !== 'admin') {
+            return $this->forbidden('Apenas administradores podem listar todos os utilizadores');
+        }
+
         $usuarios = $this->model->allWithoutTrashed();
 
         return $this->resource->collection($usuarios);

@@ -12,12 +12,13 @@ Um micro-framework PHP moderno para construção de APIs REST, construído com c
 - **PSR-15 Middlewares**: Pipeline de middleware padrão PSR-15
 - **Routing Flexível**: FastRoute para dispatcher de rotas com suporte a parâmetros
 - **ORM Eloquent**: Laravel Eloquent para abstração de banco de dados
-- **JWT Authentication**: Autenticação via JSON Web Tokens
+- **JWT Authentication**: Autenticação via JSON Web Tokens com revogação no logout
 - **Dependency Injection**: PHP-DI para injeção de dependências
 - **Rate Limiting**: Controle de taxa de requisições
 - **CORS**: Suporte a Cross-Origin Resource Sharing
 - **Security Headers**: Cabeçalhos de segurança automaticamente
 - **Soft Deletes**: Suporte a deleção suave em modelos
+- **Controle de Acesso**: Autorização baseada em roles (admin/user) com proteção contra IDOR
 
 ## Requisitos
 
@@ -97,7 +98,8 @@ parrot-php/
 │   ├── Models/                 # Modelos Eloquent
 │   │   ├── Model.php           # Modelo base PDO
 │   │   ├── EloquentModel.php   # Modelo base Eloquent
-│   │   └── UserModel.php       # Modelo de usuário
+│   │   ├── UserModel.php       # Modelo de usuário
+│   │   └── TokenRevogado.php   # Tokens JWT revogados
 │   ├── Middlewares/            # Middlewares HTTP (PSR-15)
 │   │   ├── CorsMiddleware.php
 │   │   ├── JwtAuthMiddleware.php
@@ -120,7 +122,8 @@ parrot-php/
 │   └── middlewares.php         # Stack de middlewares globais
 ├── database/
 │   ├── migrations/            # Migrations
-│   │   └── 001_create_usuarios_table.php
+│   │   ├── 001_create_usuarios_table.php
+│   │   └── 002_create_tokens_revogados_table.php
 │   ├── seed/                  # Seeds
 │   │   └── 001_admin.php
 │   └── scripts/              # Scripts de utilidades
@@ -223,13 +226,16 @@ parrot-php/
 
 | Método | Endpoint | Middleware | Descrição |
 |--------|----------|------------|-----------|
-| GET | `/api/usuarios` | JWT | Listar todos os usuários |
+| GET | `/api/usuarios` | JWT (Admin) | Listar todos os usuários |
 | GET | `/api/usuarios/{id}` | JWT | Obter usuário por ID |
 | POST | `/api/usuarios` | JWT | Criar novo usuário |
 | PUT | `/api/usuarios/{id}` | JWT | Atualizar usuário |
 | DELETE | `/api/usuarios/{id}` | JWT | Deletar usuário |
 
-> **Nota**: A autenticação JWT é feita via cookie httpOnly. O token é armazenado automaticamente pelo frontend.
+> **Notas**:
+> - A autenticação JWT é feita via cookie httpOnly. O token é armazenado automaticamente pelo frontend.
+> - Apenas usuários com role `admin` podem listar todos os usuários (`GET /api/usuarios`).
+> - Usuários não-admin podem apenas acessar/atualizar/deletar seu próprio perfil.
 
 #### GET /api/usuarios
 
@@ -347,6 +353,17 @@ parrot-php/
 | created_at | TIMESTAMP | Data de criação |
 | updated_at | TIMESTAMP | Data de atualização |
 | deleted_at | TIMESTAMP | Data de deleção (soft delete) |
+
+### Tabela: tokens_revogados
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | BIGINT UNSIGNED | Chave primária |
+| jti | VARCHAR(255) | JWT ID (identificador único do token) |
+| expiracao | DATETIME | Data de expiração do token |
+| created_at | TIMESTAMP | Data de revogação |
+
+> Os tokens são invalidados no logout e mantidos na lista negra até sua expiração natural. |
 
 ## Executando o Projeto
 

@@ -30,7 +30,8 @@ parrot-php/
 │   ├── Models/
 │   │   ├── Model.php          # Base PDO model
 │   │   ├── EloquentModel.php  # Laravel Eloquent base
-│   │   └── UserModel.php      # User model with SoftDeletes
+│   │   ├── UserModel.php      # User model with SoftDeletes
+│   │   └── TokenRevogado.php # Revoked JWT tokens (blacklist)
 │   ├── Middlewares/
 │   │   ├── ErrorHandlerMiddleware.php
 │   │   ├── JwtAuthMiddleware.php
@@ -62,7 +63,7 @@ parrot-php/
 | POST | /api/auth/login | AuthController::login | Public |
 | POST | /api/auth/logout | AuthController::logout | Public |
 | GET | /api/auth/me | AuthController::me | JWT |
-| GET | /api/usuarios | UserController::index | JWT |
+| GET | /api/usuarios | UserController::index | JWT (Admin only) |
 | GET | /api/usuarios/{id} | UserController::show | JWT |
 | POST | /api/usuarios | UserController::store | JWT |
 | PUT | /api/usuarios/{id} | UserController::update | JWT |
@@ -87,15 +88,23 @@ php -S localhost:8000 -t public
 Extend `Controller` base class which provides:
 - `$this->success($data, $statusCode)` - Return JSON success
 - `$this->error($message, $statusCode)` - Return JSON error
+- `$this->forbidden($message)` - Return 403 Forbidden
 - `$this->getParam($name)` - Get route parameter
 - `$this->getBody()` - Get request body
 - `$this->getUserId()` - Get authenticated user ID from JWT
+- `$this->getUserType()` - Get authenticated user type (admin/user)
 - `$this->validate($rules)` - Validate request data
 
 ### Models
 - Use Laravel Eloquent ORM with SoftDeletes trait
 - Table: `usuarios` (users)
 - Fields: id, nome, email, senha, tipo, created_at, updated_at, deletado_em
+- Token revocation: Table `tokens_revogados` stores revoked JWT tokens (jti, expiracao)
+
+### Authorization
+- UserController uses `canAccessUser($userId)` method to enforce ownership or admin privileges
+- Only admin users can list all users (`GET /api/usuarios`)
+- Non-admin users can only access their own profile (show, update, delete)
 
 ### Exceptions
 Throw custom exceptions for HTTP errors:

@@ -113,6 +113,39 @@ class UserModel extends EloquentModel
         return self::all()->toArray();
     }
 
+    /**
+     * Paginação de usuários sem os deletados
+     *
+     * @param int $page Página atual (começa em 1)
+     * @param int $perPage Registros por página
+     * @return array Dados da paginação com metadados
+     */
+    public function paginateWithoutTrashed(int $page = 1, int $perPage = 20): array
+    {
+        $offset = ($page - 1) * $perPage;
+
+        // Busca total de registros (sem os deletados)
+        $total = (int) self::whereNull('deletado_em')->count();
+
+        // Busca registros da página
+        $registros = self::whereNull('deletado_em')
+            ->orderBy('id', 'desc')
+            ->limit($perPage)
+            ->offset($offset)
+            ->get()
+            ->toArray();
+
+        return [
+            'data' => $registros,
+            'meta' => [
+                'pagina_atual' => $page,
+                'por_pagina' => $perPage,
+                'total_registros' => $total,
+                'total_paginas' => (int) ceil($total / $perPage),
+            ],
+        ];
+    }
+
     public function findWithTrashed(int $id): ?array
     {
         try {

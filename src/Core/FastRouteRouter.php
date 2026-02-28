@@ -234,11 +234,9 @@ class FastRouteRouter implements RequestHandlerInterface
         $metodo = $request->getMethod();
         $caminho = $this->normalizarCaminho($request->getUri()->getPath());
 
-        // Verifica se há closures nas rotas (não pode usar cache se houver)
-        $temClosure = $this->verificarTemClosure();
-
         // Em produção, usa cache do FastRoute para melhor performance
-        if ($this->env === 'production' && $this->cachePath !== '' && !$temClosure) {
+        // Assume-se que o cache é válido e não há closures em rotas em produção
+        if ($this->env === 'production' && $this->cachePath !== '') {
             // CacheDispatcher:.compila rotas uma vez e salva em arquivo
             $dispatcher = \FastRoute\cachedDispatcher(function(\FastRoute\RouteCollector $r) {
                 foreach ($this->rotas as $chave => $dados) {
@@ -291,24 +289,6 @@ class FastRouteRouter implements RequestHandlerInterface
                 // Nenhuma rota encontrada para este caminho
                 return $this->criarRespostaErro('Rota não encontrada', 404);
         }
-    }
-
-    private function verificarTemClosure(): bool
-    {
-        foreach ($this->rotas as $dados) {
-            $callback = $dados['callback'] ?? null;
-            if ($callback instanceof \Closure) {
-                return true;
-            }
-            if (is_array($callback)) {
-                foreach ($callback as $item) {
-                    if ($item instanceof \Closure) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
     }
 
     private function criarRespostaErro(string $mensagem, int $statusCode): ResponseInterface

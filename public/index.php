@@ -51,15 +51,18 @@ require_once __DIR__ . '/../vendor/autoload.php';
 // ===========================================
 // 2. Variáveis de Ambiente (.env)
 // ===========================================
-// Carrega configurações do arquivo .env
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->safeLoad();
+// Determina ambiente primeiro (lê de variáveis do sistema)
+$env = $_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? getenv('APP_ENV') ?: 'development';
+
+// Em desenvolvimento, carrega .env do arquivo
+// Em produção, as variáveis devem ser injetadas pelo servidor/Docker
+if ($env !== 'production') {
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+    $dotenv->safeLoad();
+}
 
 // Mescla $_ENV com $_SERVER (necessário para algumas bibliotecas)
 $_ENV = array_merge($_ENV, $_SERVER);
-
-// Determina ambiente (development ou production)
-$env = $_ENV['APP_ENV'] ?? 'development';
 
 // ===========================================
 // 3. Configuração de Caminhos

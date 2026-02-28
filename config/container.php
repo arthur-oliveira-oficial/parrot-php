@@ -47,7 +47,17 @@ use Psr\Http\Message\ResponseFactoryInterface;
 if (!function_exists('env_config')) {
     function env_config(string $key, mixed $default = null): mixed
     {
-        return $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key) ?: $default;
+        // Prioriza $_ENV (em memória) para melhor performance
+        // depois $_SERVER (também em memória)
+        // e por último getenv() (mais lento, chamda de sistema)
+        if (isset($_ENV[$key])) {
+            return $_ENV[$key];
+        }
+        if (isset($_SERVER[$key])) {
+            return $_SERVER[$key];
+        }
+        $valor = getenv($key);
+        return $valor !== false ? $valor : $default;
     }
 }
 

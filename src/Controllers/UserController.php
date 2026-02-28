@@ -82,9 +82,22 @@ class UserController extends Controller
             return $this->forbidden('Apenas administradores podem listar todos os utilizadores');
         }
 
-        $usuarios = $this->model->allWithoutTrashed();
+        // Extrai página e limite da query string
+        $queryParams = $request->getQueryParams();
+        $page = (int) ($queryParams['page'] ?? 1);
+        $limit = (int) ($queryParams['limit'] ?? 20);
 
-        return $this->resource->collection($usuarios);
+        // Limita valores mínimos e máximos
+        $page = max(1, $page);
+        $limit = min(max(1, $limit), 100);
+
+        // Busca usuários com paginação
+        $resultado = $this->model->paginateWithoutTrashed($page, $limit);
+
+        return $this->success([
+            'data' => $resultado['data'],
+            'meta' => $resultado['meta'],
+        ]);
     }
 
     /**

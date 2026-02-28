@@ -1,0 +1,12 @@
+{
+    frankenphp
+}
+
+# Configura o servidor local para a porta 8080
+:8080 {
+    # Define a pasta public como a raiz do servidor
+    root * public/
+
+    # Habilita o servidor PHP no modo clássico
+    php_server
+}

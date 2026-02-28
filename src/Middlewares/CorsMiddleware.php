@@ -71,14 +71,17 @@ class CorsMiddleware implements MiddlewareInterface
     ): ResponseInterface {
         $origin = $request->getHeaderLine('Origin');
 
+        // Se a origem nao for permitida, verificar o ambiente
         if (!$this->isOriginAllowed($origin)) {
-            $env = getenv('APP_ENV') ?: 'development';
+            $env = getenv('APP_ENV');
 
-            if ($env === 'development') {
-                return $handler->handle($request);
+            // Se APP_ENV nao esta definido ou e producao, bloquear
+            if ($env === false || $env !== 'development') {
+                return new Response(403, [], json_encode(['error' => 'Origin not allowed']));
             }
 
-            return new Response(403, [], json_encode(['error' => 'Origin not allowed']));
+            // Em desenvolvimento, continuar sem headers CORS (nao bloquear)
+            return $handler->handle($request);
         }
 
         if ($request->getMethod() === 'OPTIONS') {
@@ -87,35 +90,69 @@ class CorsMiddleware implements MiddlewareInterface
 
         $response = $handler->handle($request);
 
+        // Apenas permitir credenciais se a origem estiver na whitelist
+        $allowCredentials = $this->isOriginWhitelisted($origin) ? 'true' : 'false';
+
         return $response
             ->withHeader('Access-Control-Allow-Origin', $origin)
+            ->withHeader('Access-Control-Allow-Credentials', $allowCredentials)
             ->withHeader('Access-Control-Allow-Methods', implode(', ', $this->allowedMethods))
             ->withHeader('Access-Control-Allow-Headers', implode(', ', $this->allowedHeaders))
             ->withHeader('Access-Control-Max-Age', '3600');
     }
 
+    /**
+     * Verifica se a origem é permitida
+     *
+     * Seguranca:
+     * - Se APP_ENV nao estiver definido, recusa por seguranca
+     * - Em desenvolvimento, usa lista explícita (nao permite qualquer origem)
+     * - Em producao, usa whitelist estrita
+     */
     private function isOriginAllowed(string $origin): bool
     {
         if (empty($origin)) {
             return true;
         }
 
-        $env = getenv('APP_ENV') ?: 'development';
-        if ($env === 'development') {
-            return true;
+        // Verificacao explícita - nao usar fallback automático
+        $env = getenv('APP_ENV');
+
+        if ($env === false) {
+            // Variavel nao definida - recusar por seguranca
+            return false;
         }
 
+        if ($env === 'development') {
+            // Em desenvolvimento, usar lista explícita (nao qualquer origem)
+            return !empty($this->allowedOrigins) &&
+                   in_array($origin, $this->allowedOrigins, true);
+        }
+
+        // Producao: whitelist estrita
+        return in_array($origin, $this->allowedOrigins, true);
+    }
+
+    /**
+     * Verifica se a origem está na whitelist de origens permitidas
+     * (usado para decidir se credenciais podem ser enviadas)
+     */
+    private function isOriginWhitelisted(string $origin): bool
+    {
         return in_array($origin, $this->allowedOrigins, true);
     }
 
     private function handlePreflightRequest(string $origin): ResponseInterface
     {
+        // Apenas permitir credenciais se a origem estiver na whitelist
+        $allowCredentials = $this->isOriginWhitelisted($origin) ? 'true' : 'false';
+
         return new Response(204, [
             'Access-Control-Allow-Origin' => $origin,
             'Access-Control-Allow-Methods' => implode(', ', $this->allowedMethods),
             'Access-Control-Allow-Headers' => implode(', ', $this->allowedHeaders),
             'Access-Control-Max-Age' => '3600',
-            'Access-Control-Allow-Credentials' => 'true',
+            'Access-Control-Allow-Credentials' => $allowCredentials,
         ]);
     }
 }

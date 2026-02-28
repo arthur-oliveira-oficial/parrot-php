@@ -46,6 +46,27 @@ class UserController extends Controller
     }
 
     /**
+     * Verifica se o utilizador autenticado tem permissão para aceder ao registo
+     *
+     * @param ServerRequestInterface $request Requisição HTTP
+     * @param int $targetUserId ID do utilizador que se pretende aceder
+     * @return bool True se tem permissão, False caso contrário
+     */
+    private function canAccessUser(ServerRequestInterface $request, int $targetUserId): bool
+    {
+        $userId = $this->getUserId($request);
+        $userTipo = $request->getAttribute('user_tipo');
+
+        // Administradores podem aceder a qualquer utilizador
+        if ($userTipo === 'admin') {
+            return true;
+        }
+
+        // Utilizadores comuns só podem aceder ao próprio perfil
+        return $userId === $targetUserId;
+    }
+
+    /**
      * Lista todos os usuários
      *
      * Endpoint: GET /api/usuarios
@@ -73,6 +94,11 @@ class UserController extends Controller
     {
         // Obtém ID da URL (/usuarios/{id})
         $id = (int) $this->getParam($request, 'id');
+
+        // Verifica autorização (IDOR protection)
+        if (!$this->canAccessUser($request, $id)) {
+            return $this->forbidden('Não tem permissão para visualizar este utilizador');
+        }
 
         // Busca usuário (excluindo deletados logicamente)
         $usuario = $this->model->findWithoutTrashed($id);
@@ -148,6 +174,11 @@ class UserController extends Controller
         // Obtém dados do corpo
         $body = $this->getBody($request);
 
+        // Verifica autorização (IDOR protection)
+        if (!$this->canAccessUser($request, $id)) {
+            return $this->forbidden('Não tem permissão para atualizar este utilizador');
+        }
+
         // Verifica se usuário existe
         $usuario = $this->model->findWithoutTrashed($id);
         if (!$usuario) {
@@ -210,6 +241,11 @@ class UserController extends Controller
     {
         // Obtém ID da URL
         $id = (int) $this->getParam($request, 'id');
+
+        // Verifica autorização (IDOR protection)
+        if (!$this->canAccessUser($request, $id)) {
+            return $this->forbidden('Não tem permissão para remover este utilizador');
+        }
 
         // Verifica se usuário existe
         $usuario = $this->model->findWithoutTrashed($id);

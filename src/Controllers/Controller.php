@@ -171,6 +171,17 @@ abstract class Controller
     }
 
     /**
+     * Retorna erro 403 - Proibido
+     *
+     * @param string $message Mensagem de erro
+     * @return ResponseInterface
+     */
+    protected function forbidden(string $message = 'Proibido'): ResponseInterface
+    {
+        return Response::forbidden($message);
+    }
+
+    /**
      * Retorna sucesso 201 - Recurso criado
      *
      * @param mixed $data Dados do recurso criado

@@ -6,4 +6,4 @@ Mudar o APP_DEBUG para false.
 
 Alterar o JWT_SECRET para uma chave forte e segura.
 
-Ter o comando composer install --no-dev --optimize-autoloader executado no servidor.
+Ter o comando composer install --no-dev --optimize-autoloader --classmap-authoritative executado no servidor.

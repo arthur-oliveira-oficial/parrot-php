@@ -83,7 +83,8 @@ class UserModel extends EloquentModel
      */
     public function setSenhaAttribute(string $value): void
     {
-        $this->attributes['senha'] = password_hash($value, PASSWORD_BCRYPT);
+        // Atualizado para Argon2id (Recomendação OWASP)
+        $this->attributes['senha'] = password_hash($value, PASSWORD_ARGON2ID);
     }
 
     /**
@@ -223,11 +224,17 @@ class UserModel extends EloquentModel
         // Busca usuário pelo email
         $usuario = $this->findByEmail($email);
 
+        // Hash "falso" pré-calculado com Argon2id para simular o tempo de validação
+        // Isso impede que atacantes meçam o tempo de resposta para descobrir emails válidos
+        $dummyHash = '$argon2id$v=19$m=65536,t=4,p=1$c29tZXNhbHRzdHJpbmc$G2yR/Xf3b2T0uQ2qO8tE0/g6oD0';
+
         if (!$usuario) {
+            // Executa a verificação contra o hash falso apenas para gastar o mesmo tempo
+            password_verify($senha, $dummyHash);
             return null;
         }
 
-        // Verifica senha com bcrypt
+        // Verifica senha com o hash real do banco de dados
         if (!password_verify($senha, $usuario->senha)) {
             return null;
         }

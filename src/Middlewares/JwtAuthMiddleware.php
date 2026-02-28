@@ -83,22 +83,16 @@ class JwtAuthMiddleware implements MiddlewareInterface
     /**
      * Obtém o token JWT da requisição
      *
-     * Tenta obter o token de duas fontes:
-     * 1. Header Authorization: Bearer <token>
-     * 2. Cookie 'token' (fallback)
+     * Lê exclusivamente do cookie HttpOnly (protegido contra XSS).
+     * O token nunca deve ser aceito via header para evitar
+     * ataques XSS que podem ler/injetar tokens.
      *
      * @param ServerRequestInterface $request Requisição HTTP
      * @return string|null Token encontrado ou null
      */
     private function obterToken(ServerRequestInterface $request): ?string
     {
-        // Tenta primeiro o header Authorization: Bearer <token>
-        $authHeader = $request->getHeaderLine('Authorization');
-        if (!empty($authHeader) && str_starts_with($authHeader, 'Bearer ')) {
-            return substr($authHeader, 7);
-        }
-
-        // Fallback: tenta o cookie
+        // Lê exclusivamente do cookie HttpOnly (protegido contra XSS)
         $cookies = $request->getCookieParams();
         return $cookies['token'] ?? null;
     }

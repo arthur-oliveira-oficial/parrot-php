@@ -95,13 +95,15 @@ class AuthController extends Controller
 
         // Define cookie HttpOnly com o token
         // HttpOnly: JavaScript não pode acessar (protege contra XSS)
-        // Secure: apenas HTTPS
+        // Secure: apenas HTTPS em produção
         // SameSite=Strict: previne CSRF
         $expiry = time() + (int) ($_ENV['JWT_EXPIRY'] ?? 3600);
+        $isProduction = ($_ENV['APP_ENV'] ?? 'development') === 'production';
+        $secureFlag = $isProduction ? 'Secure; ' : '';
 
         $response = $response->withHeader(
             'Set-Cookie',
-            "token={$token}; HttpOnly; Secure; SameSite=Strict; Path=/; Expires=" . gmdate('D, d M Y H:i:s', $expiry) . ' GMT'
+            "token={$token}; HttpOnly; {$secureFlag}SameSite=Strict; Path=/; Expires=" . gmdate('D, d M Y H:i:s', $expiry) . ' GMT'
         );
 
         return $response;
@@ -136,9 +138,12 @@ class AuthController extends Controller
 
         $response = Response::json(['message' => 'Logout realizado com sucesso']);
 
+        $isProduction = ($_ENV['APP_ENV'] ?? 'development') === 'production';
+        $secureFlag = $isProduction ? 'Secure; ' : '';
+
         $response = $response->withHeader(
             'Set-Cookie',
-            'token=; HttpOnly; Secure; SameSite=Strict; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+            "token=; HttpOnly; {$secureFlag}SameSite=Strict; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
         );
 
         return $response;

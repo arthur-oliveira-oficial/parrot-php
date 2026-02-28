@@ -57,8 +57,8 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
             ->withHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
             ->withHeader(
                 'Content-Security-Policy',
-                // Removido o 'unsafe-inline' do style-src
-                "default-src 'self'; script-src 'self'; style-src 'self'"
+                // Permite scripts/estilos locais, imagens em base64 (data:) e recursos externos básicos
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;"
             )
             ->withHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
             ->withHeader('X-Powered-By', '');

@@ -135,8 +135,8 @@ class UserController extends Controller
 
         $errors = $this->validate($body, [
             'nome' => 'required',
-            'email' => 'required',
-            'senha' => 'required|min:6',
+            'email' => 'required|email',
+            'senha' => 'required|strong_password',
         ]);
 
         if (!empty($errors)) {

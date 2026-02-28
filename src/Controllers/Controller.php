@@ -235,12 +235,23 @@ abstract class Controller
                 continue;
             }
 
-            if ($rule === 'email' && isset($data[$field]) && !filter_var($data[$field], FILTER_VALIDATE_EMAIL)) {
-                $errors[$field] = "O campo {$field} deve ser um email válido";
+            if ($rule === 'email' && isset($data[$field])) {
+                $email = $data[$field];
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !str_contains($email, '.')) {
+                    $errors[$field] = "O campo {$field} deve ser um endereço de email válido e conter um domínio real";
+                }
             }
 
             if ($rule === 'integer' && isset($data[$field]) && !filter_var($data[$field], FILTER_VALIDATE_INT)) {
                 $errors[$field] = "O campo {$field} deve ser um número inteiro";
+            }
+
+            if ($rule === 'strong_password' && isset($data[$field])) {
+                $senha = $data[$field];
+                // Exige: Mínimo 8 caracteres, 1 maiúscula, 1 minúscula e 1 número
+                if (strlen($senha) < 8 || !preg_match('/[A-Z]/', $senha) || !preg_match('/[a-z]/', $senha) || !preg_match('/[0-9]/', $senha)) {
+                    $errors[$field] = "O campo {$field} deve ter pelo menos 8 caracteres, contendo letras maiúsculas, minúsculas e números.";
+                }
             }
 
             if (str_starts_with($rule, 'min:')) {

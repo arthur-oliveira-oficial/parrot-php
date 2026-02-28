@@ -44,9 +44,11 @@ use Psr\Http\Message\ResponseFactoryInterface;
  * @param mixed $default Valor padrão
  * @return mixed Valor da variável ou padrão
  */
-function env_config(string $key, mixed $default = null): mixed
-{
-    return $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key) ?: $default;
+if (!function_exists('env_config')) {
+    function env_config(string $key, mixed $default = null): mixed
+    {
+        return $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key) ?: $default;
+    }
 }
 
 /**

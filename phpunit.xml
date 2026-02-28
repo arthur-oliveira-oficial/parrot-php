@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          colors="true"
          cacheDirectory=".phpunit.cache"
          executionOrder="depends,defects"
@@ -25,5 +25,17 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_DEBUG" value="true"/>
+        <env name="DB_DRIVER" value="mysql"/>
+        <env name="DB_HOST" value="localhost"/>
+        <env name="DB_PORT" value="3306"/>
+        <env name="DB_NAME" value="parrot_db"/>
+        <env name="DB_USER" value="root"/>
+        <env name="DB_PASSWORD" value="20071998"/>
+        <env name="JWT_SECRET" value="parrot_dev_secret_key_123456789"/>
+        <env name="JWT_EXPIRY" value="3600"/>
+        <env name="RATE_LIMIT_MAX_REQUESTS" value="1000"/>
+        <env name="RATE_LIMIT_WINDOW_SECONDS" value="60"/>
+        <env name="RATE_LIMIT_LOGIN_MAX_REQUESTS" value="1000"/>
+        <env name="RATE_LIMIT_LOGIN_WINDOW_SECONDS" value="60"/>
     </php>
 </phpunit>

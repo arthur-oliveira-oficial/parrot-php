@@ -67,7 +67,7 @@ class UserModel extends EloquentModel
      */
     protected $casts = [
         'id' => 'integer',
-        'tipo' => 'integer',
+        'tipo' => 'string',
         'deletado_em' => 'datetime',
     ];
 

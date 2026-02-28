@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parrot PHP - Boilerplate para APIs RESTful</title>
+    <meta name="description" content="Um skeleton moderno e leve em PHP para construção de APIs com FastRoute, Eloquent ORM e Autenticação JWT.">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        parrot: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            300: '#86efac',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                        mono: ['Fira Code', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-balance {
+                text-wrap: balance;
+            }
+        }
+        /* Transição suave para o HTMX */
+        .htmx-swapping {
+            opacity: 0;
+            transition: opacity 1s ease-out;
+        }
+    </style>
+
+    <!-- Alpine.js -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Fontes do Google -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased overflow-x-hidden selection:bg-parrot-300 selection:text-parrot-900">
+
+    <!-- Navegação -->
+    <nav x-data="{ mobileMenuOpen: false, scrolled: false }" 
+         @scroll.window="scrolled = (window.pageYOffset > 20)"
+         :class="{ 'bg-white/80 backdrop-blur-md shadow-sm': scrolled, 'bg-transparent': !scrolled }"
+         class="fixed w-full z-50 transition-all duration-300 top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer" onclick="window.scrollTo(0,0)">
+                    <svg class="w-8 h-8 text-parrot-600" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                    </svg>
+                    <span class="font-bold text-xl tracking-tight text-slate-800">Parrot <span class="text-parrot-600">PHP</span></span>
+                </div>
+
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#funcionalidades" class="text-slate-600 hover:text-parrot-600 font-medium transition-colors">Funcionalidades</a>
+                    <a href="#arquitetura" class="text-slate-600 hover:text-parrot-600 font-medium transition-colors">Arquitetura</a>
+                    <a href="#codigo" class="text-slate-600 hover:text-parrot-600 font-medium transition-colors">Código</a>
+                    <a href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank" class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2 rounded-full font-medium transition-all shadow-md hover:shadow-lg">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"></path></svg>
+                        GitHub
+                    </a>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden flex items-center">
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-slate-600 hover:text-slate-900 focus:outline-none">
+                        <svg x-show="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        <svg x-show="mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display: none;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Dropdown -->
+        <div x-show="mobileMenuOpen" 
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 -translate-y-2"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-2"
+             class="md:hidden bg-white border-b border-slate-100 shadow-lg absolute w-full" style="display: none;">
+            <div class="px-4 pt-2 pb-6 space-y-2">
+                <a href="#funcionalidades" @click="mobileMenuOpen = false" class="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-parrot-600 hover:bg-slate-50">Funcionalidades</a>
+                <a href="#arquitetura" @click="mobileMenuOpen = false" class="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-parrot-600 hover:bg-slate-50">Arquitetura</a>
+                <a href="#codigo" @click="mobileMenuOpen = false" class="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-parrot-600 hover:bg-slate-50">Código</a>
+                <a href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank" class="block px-3 py-2 rounded-md text-base font-medium text-slate-900 bg-slate-100 hover:bg-slate-200 mt-4 text-center">Ver no GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+        <!-- Background Decorations -->
+        <div class="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-parrot-100/50 via-slate-50 to-slate-50"></div>
+        <div class="absolute top-0 right-0 -translate-y-12 translate-x-1/3 opacity-20">
+            <svg width="404" height="404" fill="none" viewBox="0 0 404 404"><defs><pattern id="85737c0e-0916-41d7-917f-596dc7edfa27" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="4" height="4" class="text-parrot-500" fill="currentColor"></rect></pattern></defs><rect width="404" height="404" fill="url(#85737c0e-0916-41d7-917f-596dc7edfa27)"></rect></svg>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-parrot-100 text-parrot-800 text-sm font-semibold mb-8 border border-parrot-200 shadow-sm">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-parrot-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-parrot-500"></span>
+                </span>
+                Pronto para Produção
+            </div>
+            
+            <h1 class="text-5xl md:text-6xl lg:text-7xl font-extrabold text-slate-900 tracking-tight mb-6 text-balance mx-auto">
+                O Boilerplate Definitivo para <span class="text-transparent bg-clip-text bg-gradient-to-r from-parrot-500 to-emerald-600">APIs PHP</span>
+            </h1>
+            
+            <p class="mt-4 max-w-2xl text-lg md:text-xl text-slate-600 mx-auto mb-10 text-balance">
+                Construa APIs RESTful modernas, rápidas e seguras. O Parrot PHP integra <strong>FastRoute</strong>, <strong>Eloquent ORM</strong> e <strong>JWT</strong> em uma arquitetura limpa e testável.
+            </p>
+            
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <a href="#comece" class="w-full sm:w-auto px-8 py-3.5 text-lg font-semibold rounded-full text-white bg-parrot-600 hover:bg-parrot-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
+                    Começar Agora
+                </a>
+                <a href="#codigo" class="w-full sm:w-auto px-8 py-3.5 text-lg font-semibold rounded-full text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all flex items-center justify-center gap-2">
+                    Ver a Arquitetura
+                </a>
+            </div>
+
+            <!-- Terminal Mockup -->
+            <div class="mt-16 max-w-3xl mx-auto bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-700/50 text-left">
+                <div class="flex items-center px-4 py-3 bg-slate-800/80 border-b border-slate-700/50">
+                    <div class="flex space-x-2">
+                        <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                    </div>
+                    <div class="mx-auto text-slate-400 text-xs font-mono">bash</div>
+                </div>
+                <div class="p-6 font-mono text-sm sm:text-base overflow-x-auto">
+                    <div class="flex items-center text-parrot-400 mb-2">
+                        <span class="mr-2">$</span>
+                        <span class="text-white">git clone https://github.com/arthur-oliveira-oficial/parrot-php.git</span>
+                    </div>
+                    <div class="flex items-center text-parrot-400 mb-2">
+                        <span class="mr-2">$</span>
+                        <span class="text-white">cd parrot-php && composer install</span>
+                    </div>
+                    <div class="flex items-center text-parrot-400">
+                        <span class="mr-2">$</span>
+                        <span class="text-white">php -S localhost:8000 -t public/</span>
+                    </div>
+                    <div class="mt-4 text-slate-400">
+                        > Servidor iniciado em http://localhost:8000<br>
+                        > Pressione Ctrl+C para encerrar.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Funcionalidades Section -->
+    <section id="funcionalidades" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-slate-900 sm:text-4xl">Tudo que você precisa, nada que você não precise.</h2>
+                <p class="mt-4 text-lg text-slate-600">Um ecossistema cuidadosamente selecionado para produtividade máxima.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Card 1 -->
+                <div class="p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:shadow-lg transition-shadow duration-300">
+                    <div class="w-12 h-12 bg-parrot-100 rounded-xl flex items-center justify-center mb-6 text-parrot-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3">Roteamento Ultrarrápido</h3>
+                    <p class="text-slate-600">Implementado com <code class="bg-slate-200 px-1 rounded text-sm">nikic/fast-route</code>. Defina suas rotas via Dispatcher para um desempenho imbatível em APIs.</p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:shadow-lg transition-shadow duration-300">
+                    <div class="w-12 h-12 bg-parrot-100 rounded-xl flex items-center justify-center mb-6 text-parrot-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3">Eloquent ORM Integrado</h3>
+                    <p class="text-slate-600">O poder do banco de dados do Laravel de forma standalone. Models, Migrations e Seeders prontos no <code class="bg-slate-200 px-1 rounded text-sm">DatabaseCapsule</code>.</p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:shadow-lg transition-shadow duration-300">
+                    <div class="w-12 h-12 bg-parrot-100 rounded-xl flex items-center justify-center mb-6 text-parrot-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3">Segurança por Padrão</h3>
+                    <p class="text-slate-600">Autenticação JWT completa (<code class="bg-slate-200 px-1 rounded text-sm">JwtAuthMiddleware</code>), headers de segurança e prevenção contra ataques comuns de fábrica.</p>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:shadow-lg transition-shadow duration-300">
+                    <div class="w-12 h-12 bg-parrot-100 rounded-xl flex items-center justify-center mb-6 text-parrot-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16V4a2 2 0 012-2h10a2 2 0 012 2v12m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2h-12a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3">Fila de Middlewares</h3>
+                    <p class="text-slate-600">Implementação flexível baseada na PSR-15. Controle CORS, Rate Limiting e Tratamento de Erros via <code class="bg-slate-200 px-1 rounded text-sm">MiddlewareQueue</code>.</p>
+                </div>
+
+                <!-- Card 5 -->
+                <div class="p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:shadow-lg transition-shadow duration-300">
+                    <div class="w-12 h-12 bg-parrot-100 rounded-xl flex items-center justify-center mb-6 text-parrot-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3">Cobertura de Testes</h3>
+                    <p class="text-slate-600">Garantia de qualidade com PHPUnit configurado. Testes para Autenticação, Rotas e CRUD de usuários já implementados.</p>
+                </div>
+
+                <!-- Card 6 -->
+                <div class="p-8 rounded-2xl bg-slate-50 border border-slate-100 hover:shadow-lg transition-shadow duration-300">
+                    <div class="w-12 h-12 bg-parrot-100 rounded-xl flex items-center justify-center mb-6 text-parrot-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3">Injeção de Dependência</h3>
+                    <p class="text-slate-600">Gerenciamento de instâncias nativo e limpo no <code class="bg-slate-200 px-1 rounded text-sm">container.php</code>. Desacople sua lógica com facilidade.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Code Preview Section (Alpine.js Tabs) -->
+    <section id="codigo" class="py-20 bg-slate-900 text-white overflow-hidden relative">
+        <!-- Decoration -->
+        <div class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-parrot-600/10 blur-3xl"></div>
+        <div class="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-emerald-600/10 blur-3xl"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10 relative">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-6">Padrões Limpos e Familiares</h2>
+                    <p class="text-slate-300 text-lg mb-8">
+                        Se você já utilizou frameworks modernos de PHP, se sentirá em casa. O Parrot foca em manter as coisas simples através de uma estrutura lógica de <span class="text-parrot-400">Rotas</span>, <span class="text-parrot-400">Controllers</span> e <span class="text-parrot-400">Models</span>.
+                    </p>
+                    
+                    <ul class="space-y-4 mb-8">
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-parrot-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <span class="text-slate-300">Respostas padronizadas estendendo a classe <code class="text-white bg-slate-800 px-1 rounded">Response</code>.</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-parrot-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <span class="text-slate-300">Validação de Request com tipagem forte nativa do PHP.</span>
+                        </li>
+                        <li class="flex items-start">
+                            <svg class="w-6 h-6 text-parrot-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <span class="text-slate-300">Padrão <em>Resource</em> para formatação consistente das saídas de API.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Editor de Código Falso c/ Alpine.js -->
+                <div x-data="{ activeTab: 'routes' }" class="bg-[#0d1117] rounded-xl border border-slate-700 shadow-2xl overflow-hidden">
+                    <!-- Tabs Header -->
+                    <div class="flex bg-[#161b22] border-b border-slate-700 text-sm overflow-x-auto">
+                        <button @click="activeTab = 'routes'" :class="{ 'bg-[#0d1117] text-white border-t-2 border-t-parrot-500': activeTab === 'routes', 'text-slate-400 hover:text-white': activeTab !== 'routes' }" class="px-4 py-3 outline-none transition-colors whitespace-nowrap">
+                            routes.php
+                        </button>
+                        <button @click="activeTab = 'controller'" :class="{ 'bg-[#0d1117] text-white border-t-2 border-t-parrot-500': activeTab === 'controller', 'text-slate-400 hover:text-white': activeTab !== 'controller' }" class="px-4 py-3 outline-none transition-colors whitespace-nowrap">
+                            UserController.php
+                        </button>
+                        <button @click="activeTab = 'model'" :class="{ 'bg-[#0d1117] text-white border-t-2 border-t-parrot-500': activeTab === 'model', 'text-slate-400 hover:text-white': activeTab !== 'model' }" class="px-4 py-3 outline-none transition-colors whitespace-nowrap">
+                            UserModel.php
+                        </button>
+                    </div>
+                    
+                    <!-- Código Content -->
+                    <div class="p-4 font-mono text-sm overflow-x-auto h-80">
+                        <!-- Routes Code -->
+                        <div x-show="activeTab === 'routes'" class="text-slate-300">
+<pre><code><span class="text-pink-400">&lt;?php</span>
+
+<span class="text-parrot-400">use</span> App\Controllers\UserController;
+<span class="text-parrot-400">use</span> App\Middlewares\JwtAuthMiddleware;
+
+<span class="text-slate-500">// Grupo protegido por autenticação</span>
+<span class="text-blue-400">$router</span>->group([<span class="text-yellow-300">'middleware'</span> => [JwtAuthMiddleware::class]], <span class="text-pink-400">function</span> (<span class="text-blue-400">$router</span>) {
+    
+    <span class="text-blue-400">$router</span>->get(<span class="text-yellow-300">'/api/users'</span>, [UserController::class, <span class="text-yellow-300">'index'</span>]);
+    <span class="text-blue-400">$router</span>->post(<span class="text-yellow-300">'/api/users'</span>, [UserController::class, <span class="text-yellow-300">'store'</span>]);
+    <span class="text-blue-400">$router</span>->get(<span class="text-yellow-300">'/api/users/{id:\d+}'</span>, [UserController::class, <span class="text-yellow-300">'show'</span>]);
+    
+});
+</code></pre>
+                        </div>
+
+                        <!-- Controller Code -->
+                        <div x-show="activeTab === 'controller'" style="display: none;" class="text-slate-300">
+<pre><code><span class="text-pink-400">&lt;?php</span>
+
+<span class="text-parrot-400">namespace</span> App\Controllers;
+
+<span class="text-parrot-400">use</span> App\Models\UserModel;
+<span class="text-parrot-400">use</span> App\Views\UserResource;
+<span class="text-parrot-400">use</span> App\Core\Request;
+<span class="text-parrot-400">use</span> App\Core\Response;
+
+<span class="text-pink-400">class</span> <span class="text-yellow-300">UserController</span> <span class="text-pink-400">extends</span> <span class="text-yellow-300">Controller</span>
+{
+    <span class="text-pink-400">public function</span> <span class="text-blue-300">index</span>(Request <span class="text-blue-400">$request</span>): Response
+    {
+        <span class="text-blue-400">$users</span> = UserModel::all();
+        <span class="text-pink-400">return</span> <span class="text-blue-400">$this</span>->json(UserResource::collection(<span class="text-blue-400">$users</span>));
+    }
+}
+</code></pre>
+                        </div>
+
+                        <!-- Model Code -->
+                        <div x-show="activeTab === 'model'" style="display: none;" class="text-slate-300">
+<pre><code><span class="text-pink-400">&lt;?php</span>
+
+<span class="text-parrot-400">namespace</span> App\Models;
+
+<span class="text-pink-400">class</span> <span class="text-yellow-300">UserModel</span> <span class="text-pink-400">extends</span> <span class="text-yellow-300">EloquentModel</span>
+{
+    <span class="text-pink-400">protected</span> <span class="text-blue-400">$table</span> = <span class="text-yellow-300">'usuarios'</span>;
+
+    <span class="text-pink-400">protected</span> <span class="text-blue-400">$fillable</span> = [
+        <span class="text-yellow-300">'nome'</span>,
+        <span class="text-yellow-300">'email'</span>,
+        <span class="text-yellow-300">'senha'</span>,
+        <span class="text-yellow-300">'role'</span>
+    ];
+
+    <span class="text-pink-400">protected</span> <span class="text-blue-400">$hidden</span> = [
+        <span class="text-yellow-300">'senha'</span>,
+    ];
+}
+</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HTMX Demo Section -->
+    <section class="py-20 bg-slate-50 border-t border-slate-200">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl font-bold text-slate-900 mb-4">Interatividade Moderna com HTMX</h2>
+            <p class="text-lg text-slate-600 mb-10 text-balance">
+                Construa front-ends reativos consumindo sua API Parrot PHP facilmente utilizando bibliotecas como o HTMX. Simule uma inscrição de desenvolvedor abaixo (processado via requisição assíncrona).
+            </p>
+
+            <!-- O form faz um POST fake para o httpbin, o HTMX pega o retorno e faz um "swap" usando client-side mock -->
+            <div id="newsletter-container" class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 max-w-lg mx-auto">
+                <form 
+                    hx-post="https://httpbin.org/post" 
+                    hx-trigger="submit"
+                    hx-target="#newsletter-container"
+                    hx-swap="outerHTML"
+                    hx-on::before-request="this.querySelector('button').innerHTML = 'Inscrevendo...'; this.querySelector('button').classList.add('opacity-70')"
+                    class="space-y-4 text-left">
+                    
+                    <div class="flex flex-col">
+                        <label for="email" class="text-sm font-medium text-slate-700 mb-1">E-mail para atualizações da API</label>
+                        <input type="email" id="email" name="email" required placeholder="dev@exemplo.com" class="px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-parrot-500 focus:border-parrot-500 outline-none transition-all">
+                    </div>
+                    <button type="submit" class="w-full bg-slate-900 text-white font-semibold py-3 rounded-lg hover:bg-slate-800 transition-colors">
+                        Inscrever-se na Demo
+                    </button>
+                </form>
+                
+                <!-- Este bloco está invisível, é um truque para o HTMX trocar o container pela mensagem de sucesso após a chamada, 
+                     interceptando a resposta. Como httpbin retorna JSON e não HTML, usaremos o evento htmx:afterRequest nativamente com JS inline
+                     para simular a troca perfeita, já que GH Pages é estático. -->
+                <script>
+                    document.body.addEventListener('htmx:afterRequest', function(evt) {
+                        if(evt.detail.target.id === 'newsletter-container' && evt.detail.successful) {
+                            evt.detail.target.innerHTML = `
+                                <div class="text-center py-6 htmx-swapping" id="success-message">
+                                    <div class="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    </div>
+                                    <h3 class="text-2xl font-bold text-slate-900 mb-2">Inscrição Confirmada!</h3>
+                                    <p class="text-slate-600">Requisição assíncrona efetuada com sucesso usando HTMX.</p>
+                                    <button onclick="location.reload()" class="mt-6 text-sm text-parrot-600 font-medium hover:underline">Tentar novamente</button>
+                                </div>
+                            `;
+                            // Trigger fade in
+                            setTimeout(() => {
+                                document.getElementById('success-message').style.opacity = '1';
+                            }, 50);
+                        }
+                    });
+                </script>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 py-12 border-t border-slate-800 text-slate-400">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+            
+            <div class="flex items-center gap-2 justify-center md:justify-start">
+                <svg class="w-6 h-6 text-parrot-500" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                </svg>
+                <span class="font-bold text-lg tracking-tight text-white">Parrot PHP</span>
+            </div>
+            
+            <div class="text-center text-sm">
+                &copy; 2024 Arthur Oliveira. Todos os direitos reservados.
+            </div>
+            
+            <div class="flex justify-center md:justify-end gap-4">
+                <a href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank" class="hover:text-white transition-colors">
+                    <span class="sr-only">GitHub</span>
+                    <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

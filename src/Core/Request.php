@@ -111,7 +111,8 @@ class Request
      * já tenha validado o token e adicionado o atributo 'user_id'
      * à requisição.
      *
-     * O token JWT é enviado no header Authorization: Bearer <token>
+     * Primeiro verifica se o atributo 'user_id' já foi definido
+     * pelo middleware (indicando autenticação bem-sucedida).
      *
      * @param ServerRequestInterface $request A requisição
      * @return int|null ID do usuário ou null se não autenticado
@@ -119,19 +120,19 @@ class Request
      */
     public static function getUserIdFromToken(ServerRequestInterface $request): ?int
     {
-        // Obtém o header Authorization
-        $authHeader = $request->getHeaderLine('Authorization');
+        // Se o middleware já validou, retorna o user_id dos atributos
+        $userId = $request->getAttribute('user_id');
+        if ($userId !== null) {
+            return (int) $userId;
+        }
 
-        // Verifica se existe e começa com "Bearer "
+        // Fallback: tenta ler do header Authorization (para compatibilidade)
+        $authHeader = $request->getHeaderLine('Authorization');
         if (empty($authHeader) || !str_starts_with($authHeader, 'Bearer ')) {
             return null;
         }
 
-        // O token em si não é necessário aqui - o middleware
-        // JwtAuthMiddleware já extraiu e validou, adicionando user_id como atributo
-        $token = substr($authHeader, 7);
-
-        // Retorna o user_id que foi definido pelo JwtAuthMiddleware
-        return $request->getAttribute('user_id');
+        // Retorna null se não houve autenticação prévia
+        return null;
     }
 }

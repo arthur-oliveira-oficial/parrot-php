@@ -25,6 +25,7 @@ declare(strict_types=1);
 namespace App\Middlewares;
 
 use App\Core\Response;
+use App\Models\TokenRevogado;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -55,7 +56,7 @@ class JwtAuthMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $token = $this->obterTokenDoCookie($request);
+        $token = $this->obterToken($request);
 
         if (!$token) {
             return Response::unauthorized('Token de autenticação não fornecido');
@@ -67,6 +68,11 @@ class JwtAuthMiddleware implements MiddlewareInterface
             return Response::unauthorized('Token de autenticação inválido ou expirado');
         }
 
+        // Verifica se o token foi revogado (blacklist)
+        if (isset($payload['jti']) && TokenRevogado::estaRevogado($payload['jti'])) {
+            return Response::unauthorized('Token foi revogado');
+        }
+
         $request = $request->withAttribute('user_id', (int) $payload['sub']);
         $request = $request->withAttribute('user_email', $payload['email'] ?? '');
         $request = $request->withAttribute('user_tipo', $payload['tipo'] ?? '');
@@ -74,10 +80,26 @@ class JwtAuthMiddleware implements MiddlewareInterface
         return $handler->handle($request);
     }
 
-    private function obterTokenDoCookie(ServerRequestInterface $request): ?string
+    /**
+     * Obtém o token JWT da requisição
+     *
+     * Tenta obter o token de duas fontes:
+     * 1. Header Authorization: Bearer <token>
+     * 2. Cookie 'token' (fallback)
+     *
+     * @param ServerRequestInterface $request Requisição HTTP
+     * @return string|null Token encontrado ou null
+     */
+    private function obterToken(ServerRequestInterface $request): ?string
     {
-        $cookies = $request->getCookieParams();
+        // Tenta primeiro o header Authorization: Bearer <token>
+        $authHeader = $request->getHeaderLine('Authorization');
+        if (!empty($authHeader) && str_starts_with($authHeader, 'Bearer ')) {
+            return substr($authHeader, 7);
+        }
 
+        // Fallback: tenta o cookie
+        $cookies = $request->getCookieParams();
         return $cookies['token'] ?? null;
     }
 
@@ -104,7 +126,10 @@ class JwtAuthMiddleware implements MiddlewareInterface
         [$headerEncoded, $payloadEncoded, $signature] = $parts;
 
         // Obtém segredo do .env
-        $secret = $_ENV['JWT_SECRET'] ?? 'development-secret-change-in-production';
+        $secret = $_ENV['JWT_SECRET'] ?? null;
+        if (empty($secret)) {
+            throw new \RuntimeException('JWT_SECRET não configurado. Defina a variável JWT_SECRET no arquivo .env');
+        }
 
         // Calcula assinatura esperada
         $expectedSignature = $this->base64UrlEncode(

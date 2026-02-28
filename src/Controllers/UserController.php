@@ -117,13 +117,8 @@ class UserController extends Controller
             return $this->error('Email já está em uso', 422);
         }
 
-        if (!isset($body['tipo'])) {
-            $body['tipo'] = 'user';
-        }
-
-        if (!in_array($body['tipo'], ['admin', 'user'])) {
-            return $this->error('Tipo inválido. Use: admin ou user', 422);
-        }
+        // Usuários criados via API são sempre tipo 'user'
+        // Para criar admins, use o método interno criarUsuarioAdmin() do Model
 
         $id = $this->model->criarUsuario($body);
 
@@ -172,13 +167,9 @@ class UserController extends Controller
             }
         }
 
-        // Valida tipo
-        if (isset($body['tipo']) && !in_array($body['tipo'], ['admin', 'user'])) {
-            return $this->error('Tipo inválido. Use: admin ou user', 422);
-        }
-
         // Filtra apenas campos permitidos (prevenção de campos extras)
-        $allowedFields = ['nome', 'email', 'senha', 'tipo'];
+        // Nota: 'tipo' foi removido para prevenir escalação de privilégios via Mass Assignment
+        $allowedFields = ['nome', 'email', 'senha'];
         $data = array_intersect_key($body, array_flip($allowedFields));
 
         // Remove senha se vazia (não alterar)

@@ -50,7 +50,10 @@ class UserModel extends EloquentModel
     protected $table = 'usuarios';
 
     /** @var array Campos que podem ser preenchidos em massa (mass assignment) */
-    protected $fillable = ['nome', 'email', 'senha', 'tipo'];
+    protected $fillable = ['nome', 'email', 'senha'];
+
+    /** @var array Campos protegidos contra mass assignment */
+    protected $guarded = ['tipo'];
 
     /** @var array Campos que não aparecem na serialização JSON */
     protected $hidden = ['senha'];
@@ -140,9 +143,31 @@ class UserModel extends EloquentModel
     }
 
     /**
+     * Cria um novo usuário com privilégios de administrador
+     *
+     * Método interno seguro para criação de admins.
+     * Não exponível via API - uso apenas em código interno.
+     *
+     * @param string $nome Nome do usuário
+     * @param string $email Email do usuário
+     * @param string $senha Senha em texto plano
+     * @return int ID do usuário criado
+     */
+    public function criarUsuarioAdmin(string $nome, string $email, string $senha): int
+    {
+        $usuario = static::query()->create([
+            'nome' => $nome,
+            'email' => $email,
+            'senha' => $senha,
+            'tipo' => 'admin',
+        ]);
+        return $usuario->id;
+    }
+
+    /**
      * Cria um novo usuário
      *
-     * @param array $data Dados do usuário (nome, email, senha, tipo)
+     * @param array $data Dados do usuário (nome, email, senha)
      * @return int ID do usuário criado
      */
     public function criarUsuario(array $data): int

@@ -8,10 +8,13 @@
  * Headers adicionados:
  * - X-Content-Type-Options: Impede MIME-type sniffing
  * - X-Frame-Options: Protege contra clickjacking (iframes maliciosos)
- * - X-XSS-Protection: Ativa filtro XSS do navegador (legacy)
  * - Referrer-Policy: Controla informações do referenciador
  * - Content-Security-Policy (CSP): Previne XSS e ataques de inclusão
  * - Strict-Transport-Security (HSTS): Força HTTPS
+ *
+ * Nota: X-XSS-Protection foi removido pois é um header legado
+ * depreciado que pode introduzir vulnerabilidades. A proteção
+ * contra XSS é garantida pela CSP.
  *
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers Security Headers
  * @see https://owasp.org/www-project-secure-headers/ OWASP Secure Headers
@@ -51,7 +54,6 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
         return $response
             ->withHeader('X-Content-Type-Options', 'nosniff')
             ->withHeader('X-Frame-Options', 'DENY')
-            ->withHeader('X-XSS-Protection', '1; mode=block')
             ->withHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
             ->withHeader(
                 'Content-Security-Policy',

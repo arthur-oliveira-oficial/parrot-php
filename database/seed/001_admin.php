@@ -21,7 +21,7 @@ $senhaHash = password_hash('admin123', PASSWORD_BCRYPT);
 // Insere o usuário admin
 $stmt = $pdo->prepare("
     INSERT INTO usuarios (nome, email, senha, tipo, created_at, updated_at)
-    VALUES (?, ?, ?, ?, NOW(), NOW())
+    VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
 ");
 
 $stmt->execute(['Administrador', 'admin@parrot.com', $senhaHash, 'admin']);

@@ -49,7 +49,6 @@ parrot-php/
 │   │   └── seed.php          # Popula dados iniciais
 │   ├── seed/                  # Dados para seed
 │   │   └── 001_admin.php     # Usuário administrador padrão
-│   └── database.sqlite       # Banco de dados SQLite (dev)
 ├── docs/                      # Documentações adicionais
 │   └── instalacao.md         # Guia de instalação detalhado
 ├── public/                    # Document Root

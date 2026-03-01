@@ -34,25 +34,73 @@ O **Parrot PHP** utiliza os melhores pacotes da comunidade (como Eloquent ORM, F
 
 ## **📂 Estrutura do Projeto**
 
-parrot-php/  
-├── config/                # Configurações gerais (routes.php, container.php)
-├── database/              # Estrutura de BD e SQLite
-│   ├── migrations/        # Classes de criação de tabelas
-│   ├── scripts/           # Scripts CLI de execução (migrate.php, seed.php)
-│   └── seed/              # Dados iniciais de teste/admin
-├── docs/                  # Documentações adicionais (Deploy)
-├── public/                # Document Root, Ponto de entrada (index.php)
-├── src/                   # Código-fonte principal da aplicação
-│   ├── Controllers/       # Lógica de negócio HTTP
-│   ├── Core/              # Núcleo do mini-framework (App, Request, Response, Router)
-│   ├── Exceptions/        # Exceções HTTP personalizadas
-│   ├── Middlewares/       # Interceptadores de requisição HTTP
-│   ├── Models/            # Modelos do Eloquent ORM
-│   └── Views/             # Resources para formatação de JSON
-├── tests/                 # Testes automatizados (PHPUnit)
-├── .env.example           # Variáveis de ambiente de exemplo
-├── Caddyfile              # Configuração do servidor Caddy
-└── composer.json          # Gerenciamento de dependências
+```
+parrot-php/
+├── config/                     # Configurações gerais
+│   ├── container.php          # Container de Injeção de Dependências (PHP-DI)
+│   ├── middlewares.php        # Registro global de middlewares
+│   └── routes.php             # Definição das rotas da API
+├── database/                  # Banco de dados e scripts
+│   ├── migrations/           # Scripts de criação de tabelas
+│   │   ├── 001_create_usuarios_table.php
+│   │   └── 002_create_tokens_revogados_table.php
+│   ├── scripts/               # Scripts CLI de execução
+│   │   ├── migrate.php       # Executa as migrações
+│   │   └── seed.php          # Popula dados iniciais
+│   ├── seed/                  # Dados para seed
+│   │   └── 001_admin.php     # Usuário administrador padrão
+│   └── database.sqlite       # Banco de dados SQLite (dev)
+├── docs/                      # Documentações adicionais
+│   └── instalacao.md         # Guia de instalação detalhado
+├── public/                    # Document Root
+│   └── index.php             # Ponto de entrada da aplicação
+├── src/                       # Código-fonte principal
+│   ├── Controllers/          # Controllers (lógica HTTP)
+│   │   ├── Controller.php    # Controller base
+│   │   ├── AuthController.php
+│   │   └── UserController.php
+│   ├── Core/                  # Núcleo do framework
+│   │   ├── Application.php   # Classe principal da aplicação
+│   │   ├── DatabaseCapsule.php
+│   │   ├── FastRouteRouter.php
+│   │   ├── MiddlewareQueue.php
+│   │   ├── Request.php
+│   │   ├── Response.php
+│   │   └── Router.php
+│   ├── Exceptions/            # Exceções HTTP personalizadas
+│   │   ├── BadRequestException.php
+│   │   ├── ForbiddenException.php
+│   │   ├── HttpException.php
+│   │   ├── MethodNotAllowedException.php
+│   │   ├── NotFoundException.php
+│   │   └── UnauthorizedException.php
+│   ├── Middlewares/           # Middlewares HTTP
+│   │   ├── CorsMiddleware.php
+│   │   ├── ErrorHandlerMiddleware.php
+│   │   ├── JwtAuthMiddleware.php
+│   │   ├── RateLimitMiddleware.php
+│   │   └── SecurityHeadersMiddleware.php
+│   ├── Models/                # Models (Eloquent ORM)
+│   │   ├── EloquentModel.php
+│   │   ├── Model.php
+│   │   ├── TokenRevogado.php
+│   │   └── UserModel.php
+│   └── Views/                 # Resources (formatação JSON)
+│       ├── Resource.php
+│       └── UserResource.php
+├── tests/                     # Testes automatizados (PHPUnit)
+│   ├── bootstrap.php
+│   ├── TestCase.php
+│   ├── AuthTest.php
+│   └── UserCrudTest.php
+├── .env.example              # Variáveis de ambiente de exemplo
+├── .gitignore
+├── Caddyfile                 # Configuração do servidor Caddy
+├── CLAUDE.md                 # Instruções para IA
+├── composer.json
+├── phpunit.xml
+└── README.md
+```
 
 ## **🚀 Instalação e Configuração (Desenvolvimento)**
 

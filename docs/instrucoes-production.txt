@@ -1,9 +1,0 @@
-Para a implantação real num servidor de produção, lembre-se apenas de:
-
-Garantir que a variável APP_ENV no ficheiro .env está definida como production.
-
-Mudar o APP_DEBUG para false.
-
-Alterar o JWT_SECRET para uma chave forte e segura.
-
-Ter o comando composer install --no-dev --optimize-autoloader --classmap-authoritative executado no servidor.

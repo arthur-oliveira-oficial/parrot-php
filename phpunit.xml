@@ -25,12 +25,8 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_DEBUG" value="true"/>
-        <env name="DB_DRIVER" value="mysql"/>
-        <env name="DB_HOST" value="localhost"/>
-        <env name="DB_PORT" value="3306"/>
-        <env name="DB_NAME" value="parrot_db"/>
-        <env name="DB_USER" value="root"/>
-        <env name="DB_PASSWORD" value="20071998"/>
+        <env name="DB_DRIVER" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
         <env name="JWT_SECRET" value="parrot_dev_secret_key_123456789"/>
         <env name="JWT_EXPIRY" value="3600"/>
         <env name="RATE_LIMIT_MAX_REQUESTS" value="1000"/>

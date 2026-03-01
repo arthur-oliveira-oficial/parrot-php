@@ -48,25 +48,26 @@ Servidor moderno com melhor performance.
 
 ```bash
 # Instalar Caddy com FrankenPHP
-curl -1sL https://dl.cloudsmith.io/public/caddy/stable/gpg | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sL https://dl.cloudsmith.io/public/caddy/stable/deb.deb.txt | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update
-sudo apt install -y caddy
+curl https://frankenphp.dev/install.sh | sh
 ```
 
 Crie o arquivo `Caddyfile` na raiz do projeto:
 
 ```caddy
-localhost:8080 {
-    root * /caminho/para/parrot-php/public
-    php
-    file_server
+{
+    frankenphp
 }
+
+:8080 {
+    root * public/
+    php_server
+}
+
 ```
 
 Iniciar:
 ```bash
-caddy run
+frankenphp run
 ```
 
 ### Opção 2: Nginx + PHP-FPM

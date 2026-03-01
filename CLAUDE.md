@@ -12,13 +12,14 @@ It is **not** Laravel, Symfony, or Slim, although it draws inspiration from mode
 
 **Tech Stack:**
 
-* **Language:** PHP 8.4 (Mandatory use of strict typing, union types, etc.)
+* **Language:** PHP 8.4+ (Mandatory use of strict typing, union types, etc.)
 * **Server:** Caddy / FrankenPHP (Classic Mode)  
 * **Database/ORM:** `illuminate/database` (Standalone Laravel Eloquent ORM)
+* **Testing Database:** MariaDB / MySQL strictly. SQLite is NO LONGER USED. Tests run against a live MariaDB test database (`parrot_test`) to ensure a faithful production representation.
 * **Dependency Injection:** `php-di/php-di` (Configured in `config/container.php`)
 * **Routing:** `nikic/fast-route`
 * **HTTP Messages/PSR-7:** `nyholm/psr7` and standard PSR interfaces (`psr/http-message`, `psr/http-server-middleware`, `psr/http-server-handler`, etc.)
-* **Authentication:** JWT (JSON Web Tokens), implemented manually without third-party JWT libraries to ensure maximum control and performance. Tokens are stateless but include revocation checking via a blacklist. Tokens are managed via HttpOnly cookies.
+* **Authentication:** JWT (JSON Web Tokens), implemented manually without third-party JWT libraries to ensure maximum control and performance. Tokens are stateless but include revocation checking via a blacklist (`TokenRevogado`). Tokens are managed exclusively via HttpOnly cookies (to prevent XSS) and never sent directly via headers.
 * **Architecture:** Simplified MVC for APIs (Router -> Middleware -> Controller -> Model -> Resource/View -> Response).
 
 ## **Absolute Coding Rules (DO NOT IGNORE)**
@@ -29,7 +30,8 @@ It is **not** Laravel, Symfony, or Slim, although it draws inspiration from mode
 4. **Standardized Responses:** The API is strictly JSON. Always return formatted data using the classes in the `src/Views/` folder (Resources) or using the `App\Core\Response` helper methods.
 5. **Error Handling:** NEVER return empty try/catch blocks. Exceptions must be thrown using the framework's classes (`Exceptions/NotFoundException.php`, `BadRequestException.php`, `UnauthorizedException.php`, etc.). The `ErrorHandlerMiddleware` will catch and format them to JSON.
 6. **Dependency Injection:** Instantiate classes and dependencies cleanly. The framework has a DI container configured in `config/container.php`. Controllers and middlewares should receive their dependencies in the constructor.
-7. **OWASP Security:**
+7. **Testing:** Run tests using `./vendor/bin/phpunit`. Tests must expect strictly MariaDB/MySQL environment variables (`DB_DRIVER=mysql`).
+8. **OWASP Security:**
    * Strictly validate all input from requests.
    * Protected routes MUST use `JwtAuthMiddleware`.
    * Never trust client input.
@@ -41,6 +43,7 @@ When creating or modifying files, respect this structure:
 
 * `/config` -> Route files (`routes.php`), and DI container (`container.php`).
 * `/database/migrations` -> Table creation scripts.
+* `/database/scripts` -> CLI Scripts for db migration and seeding (`migrate.php` / `seed.php`).
 * `/src/Controllers` -> Request/response logic. Extends `Controller`.
 * `/src/Core` -> The core of the framework (Application, Router, Request, Response). *Do not modify unless requested.*
 * `/src/Exceptions` -> Custom HTTP exceptions (e.g. `NotFoundException`, `BadRequestException`).
@@ -195,5 +198,6 @@ Always validate this checklist before generating code:
 4. **Insecure Design:** Apply Rate Limiting (already available in the framework) on sensitive routes like login and password recovery.  
 5. **Security Misconfiguration:** The `.env` file should never be committed. Use `.env.example`. In production, display_errors must be OFF (handled by `ErrorHandlerMiddleware`).
 6. **JWT & Cookies:** Tokens are sent securely via HttpOnly cookies to mitigate XSS attacks. Never accept tokens via headers directly in an insecure manner if HttpOnly cookies can be used instead.
+7. **Strict Database Driver:** Always assume a strict MySQL/MariaDB database driver and structure for tests (`php_unit.xml`) and local development. Never attempt to configure or test with SQLite.
 
 When receiving a user request from now on, strictly act as this expert and follow this architectural framework.

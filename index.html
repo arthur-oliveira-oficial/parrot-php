@@ -1,121 +1,112 @@
 <!DOCTYPE html>
 <html lang="pt-BR" class="scroll-smooth">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Parrot PHP - MicroFramework para APIs RESTful Modernas</title>
-
-  <!-- Tailwind CSS -->
+  <title>Parrot PHP - High-Performance RESTful API MicroFramework</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Configuração do Tailwind -->
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            brand: {
-              50: '#ecfdf5',
-              100: '#d1fae5',
-              500: '#10b981', // Emerald 500
-              600: '#059669', // Emerald 600
-              900: '#064e3b',
-            }
+            brand: { 50: '#ecfdf5', 100: '#d1fae5', 400: '#34d399', 500: '#10b981', 600: '#059669', 900: '#064e3b' },
+            dark: { 800: '#0f172a', 900: '#020617', 950: '#010409' }
           },
           fontFamily: {
             sans: ['Inter', 'sans-serif'],
             mono: ['Fira Code', 'monospace'],
+          },
+          animation: {
+            'blob': 'blob 7s infinite',
+            'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+          },
+          keyframes: {
+            blob: {
+              '0%': { transform: 'translate(0px, 0px) scale(1)' },
+              '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+              '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+              '100%': { transform: 'translate(0px, 0px) scale(1)' },
+            },
+            fadeInUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            }
           }
         }
       }
     }
   </script>
-
-  <!-- Google Fonts -->
-  <link
-    href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet">
-
-  <!-- Alpine.js -->
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
-
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-
-    .font-mono {
-      font-family: 'Fira Code', monospace;
-    }
-
-    /* Efeito de brilho de fundo */
-    .bg-glow {
-      position: absolute;
-      width: 600px;
-      height: 600px;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, rgba(15, 23, 42, 0) 70%);
-      top: -200px;
-      right: -100px;
-      border-radius: 50%;
-      z-index: -1;
-      pointer-events: none;
-    }
+    body { font-family: 'Inter', sans-serif; background-color: #020617; color: #cbd5e1; }
+    .font-mono { font-family: 'Fira Code', monospace; }
+    .glass-nav { background: rgba(2, 6, 23, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+    .glass-card:hover { border-color: rgba(16, 185, 129, 0.3); transform: translateY(-2px); transition: all 0.3s ease; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 0 20px rgba(16, 185, 129, 0.1); }
+    
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #020617; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    
+    .text-gradient { background: linear-gradient(to right, #34d399, #10b981, #059669); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
   </style>
 </head>
+<body class="antialiased overflow-x-hidden selection:bg-brand-500 selection:text-white">
 
-<body class="bg-slate-900 text-slate-300 antialiased overflow-x-hidden relative">
+  
+  <!-- Background Orbs -->
+  <div class="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
+    <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-600/20 rounded-full mix-blend-screen filter blur-[100px] animate-blob"></div>
+    <div class="absolute top-[40%] left-[-10%] w-[400px] h-[400px] bg-blue-600/15 rounded-full mix-blend-screen filter blur-[100px] animate-blob animation-delay-2000"></div>
+    <div class="absolute bottom-[-10%] right-[20%] w-[600px] h-[600px] bg-brand-900/40 rounded-full mix-blend-screen filter blur-[120px] animate-blob animation-delay-4000"></div>
+    <div class="absolute top-[20%] right-[30%] w-[300px] h-[300px] bg-purple-500/10 rounded-full mix-blend-screen filter blur-[80px] animate-blob animation-delay-2000"></div>
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIvPjwvc3ZnPg==')] z-[-1]"></div>
+  </div>
 
-  <div class="bg-glow"></div>
 
-  <!-- Navegação (Alpine.js state: mobileMenuOpen) -->
+  <!-- Navigation -->
   <nav x-data="{ mobileMenuOpen: false, scrolled: false }" @scroll.window="scrolled = (window.pageYOffset > 20)"
-    :class="{ 'bg-slate-900/90 backdrop-blur-md shadow-lg': scrolled, 'bg-transparent': !scrolled }"
-    class="fixed w-full top-0 z-50 transition-all duration-300 border-b border-transparent"
-    :style="scrolled ? 'border-bottom-color: rgba(255,255,255,0.05)' : ''">
+    :class="{ 'glass-nav shadow-lg': scrolled, 'bg-transparent': !scrolled }"
+    class="fixed w-full top-0 z-50 transition-all duration-300">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
+      <div class="flex items-center justify-between h-20">
         <!-- Logo -->
-        <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer" onclick="window.scrollTo(0,0)">
-          <span class="text-2xl">🦜</span>
-          <span class="font-bold text-white text-xl tracking-tight">Parrot <span
-              class="text-brand-500">PHP</span></span>
+        <div class="flex-shrink-0 flex items-center gap-3 cursor-pointer group" onclick="window.scrollTo(0,0)">
+          <div class="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center border border-brand-500/20 group-hover:border-brand-500/50 transition-colors shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+            <span class="text-2xl pt-1">🦜</span>
+          </div>
+          <span class="font-bold text-white text-2xl tracking-tight">Parrot <span class="text-brand-500">PHP</span></span>
         </div>
 
         <!-- Desktop Menu -->
-        <div class="hidden md:block">
-          <div class="ml-10 flex items-baseline space-x-8">
-            <a href="#recursos"
-              class="hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Recursos</a>
-            <a href="#arquitetura"
-              class="hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Arquitetura</a>
-            <a href="#comece" class="hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Como
-              Instalar</a>
-          </div>
-        </div>
-
-        <!-- CTA Desktop -->
-        <div class="hidden md:block">
+        <div class="hidden md:flex items-center space-x-1">
+          <a href="#recursos" class="text-slate-300 hover:text-white hover:bg-white/5 px-4 py-2 rounded-lg text-sm font-medium transition-all">Recursos</a>
+          <a href="#code-showcase" class="text-slate-300 hover:text-white hover:bg-white/5 px-4 py-2 rounded-lg text-sm font-medium transition-all">Código</a>
+          <a href="#arquitetura" class="text-slate-300 hover:text-white hover:bg-white/5 px-4 py-2 rounded-lg text-sm font-medium transition-all">Arquitetura</a>
+          <a href="#comece" class="text-slate-300 hover:text-white hover:bg-white/5 px-4 py-2 rounded-lg text-sm font-medium transition-all">Instalação</a>
+          
+          <div class="w-px h-6 bg-slate-700 mx-4"></div>
+          
           <a href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank"
-            class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium border border-slate-700 transition-all flex items-center gap-2">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path fill-rule="evenodd"
-                d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
-                clip-rule="evenodd"></path>
+            class="group bg-slate-800/80 hover:bg-slate-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold border border-slate-600 hover:border-slate-500 transition-all flex items-center gap-2 shadow-lg">
+            <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
+              <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"></path>
             </svg>
             GitHub
           </a>
         </div>
 
         <!-- Mobile Menu Button -->
-        <div class="-mr-2 flex md:hidden">
-          <button @click="mobileMenuOpen = !mobileMenuOpen" type="button"
-            class="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 focus:outline-none">
-            <svg class="h-6 w-6" x-show="!mobileMenuOpen" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="md:hidden flex items-center">
+          <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-slate-300 hover:text-white p-2">
+            <svg class="h-6 w-6 transition-all" :class="{'hidden': mobileMenuOpen}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-            <svg class="h-6 w-6" x-show="mobileMenuOpen" style="display: none;" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor">
+            <svg class="h-6 w-6 transition-all" :class="{'hidden': !mobileMenuOpen}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -124,368 +115,403 @@
     </div>
 
     <!-- Mobile Menu -->
-    <div x-show="mobileMenuOpen" x-transition:enter="transition ease-out duration-100"
-      x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100"
-      x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100"
-      x-transition:leave-end="transform opacity-0 scale-95" class="md:hidden bg-slate-900 border-b border-slate-800"
-      style="display: none;">
-      <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-        <a @click="mobileMenuOpen = false" href="#recursos"
-          class="text-slate-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Recursos</a>
-        <a @click="mobileMenuOpen = false" href="#arquitetura"
-          class="text-slate-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Arquitetura</a>
-        <a @click="mobileMenuOpen = false" href="#comece"
-          class="text-slate-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Como Instalar</a>
-        <a href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank"
-          class="text-brand-500 font-bold block px-3 py-2 rounded-md text-base">Acessar GitHub</a>
+    <div x-show="mobileMenuOpen" x-collapse class="md:hidden glass-nav absolute w-full border-b border-slate-800/50 shadow-2xl">
+      <div class="px-4 pt-2 pb-6 space-y-2">
+        <a @click="mobileMenuOpen = false" href="#recursos" class="text-slate-300 hover:text-brand-400 hover:bg-white/5 block px-4 py-3 rounded-lg text-base font-medium">Recursos</a>
+        <a @click="mobileMenuOpen = false" href="#code-showcase" class="text-slate-300 hover:text-brand-400 hover:bg-white/5 block px-4 py-3 rounded-lg text-base font-medium">Código</a>
+        <a @click="mobileMenuOpen = false" href="#arquitetura" class="text-slate-300 hover:text-brand-400 hover:bg-white/5 block px-4 py-3 rounded-lg text-base font-medium">Arquitetura</a>
+        <a @click="mobileMenuOpen = false" href="#comece" class="text-slate-300 hover:text-brand-400 hover:bg-white/5 block px-4 py-3 rounded-lg text-base font-medium">Como Instalar</a>
+        <a href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank" class="mt-4 flex items-center justify-center gap-2 bg-brand-600 text-white rounded-lg px-4 py-3 font-semibold">
+          Acessar GitHub
+        </a>
       </div>
     </div>
   </nav>
 
   <!-- Hero Section -->
-  <main class="pt-32 pb-16 sm:pt-40 sm:pb-24 lg:pb-32 overflow-hidden">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-      <div class="lg:grid lg:grid-cols-12 lg:gap-16">
-        <!-- Text Content -->
-        <div class="md:max-w-2xl md:mx-auto lg:col-span-6 lg:text-left lg:flex lg:items-center">
-          <div>
-            <div
-              class="inline-flex items-center px-3 py-1 rounded-full bg-brand-500/10 text-brand-500 text-sm font-medium mb-6 border border-brand-500/20">
-              <span class="flex w-2 h-2 rounded-full bg-brand-500 mr-2 animate-pulse"></span>
-              Pronto para o PHP 8.4+
-            </div>
-            <h1
-              class="text-4xl tracking-tight font-extrabold text-white sm:text-5xl md:text-6xl lg:text-5xl xl:text-6xl">
-              Crie APIs RESTful <span class="text-brand-500">poderosas</span> e sem enrolação
-            </h1>
-            <p class="mt-4 text-base text-slate-400 sm:text-lg sm:mt-5 md:text-xl lg:mx-0">
-              O <strong>Parrot PHP</strong> é um MicroFramework limpo, moderno e rápido. Combina o melhor do FastRoute,
-              Eloquent ORM e autenticação JWT sob os padrões PSR. Sem a sobrecarga de grandes frameworks.
-            </p>
-            <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-start">
-              <a href="#comece"
-                class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-brand-600 hover:bg-brand-500 transition-colors shadow-lg shadow-brand-500/30">
-                Começar agora
-              </a>
-              <a href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank"
-                class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3 border border-slate-700 text-base font-medium rounded-lg text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white transition-colors">
-                Documentação Completa
-              </a>
-            </div>
-            <p class="mt-4 text-sm text-slate-500">
-              Requerimentos: PHP 8.4+, Composer, MySQL/PostgreSQL.
-            </p>
-          </div>
+  <main class="relative pt-32 pb-16 sm:pt-40 sm:pb-24 lg:pb-32 overflow-hidden min-h-[90vh] flex items-center">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative w-full">
+      <div class="text-center max-w-4xl mx-auto opacity-0 animate-fade-in-up">
+        
+        <div class="inline-flex items-center px-4 py-1.5 rounded-full bg-brand-500/10 text-brand-400 text-sm font-semibold mb-8 border border-brand-500/20 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+          <span class="relative flex w-2.5 h-2.5 mr-2.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full w-2.5 h-2.5 bg-brand-500"></span>
+          </span>
+          PHP 8.4+ • Arquitetura Limpa • Pronto para Produção
         </div>
 
-        <!-- Code Mockup -->
-        <div class="mt-16 sm:mt-24 lg:mt-0 lg:col-span-6">
-          <div class="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 overflow-hidden relative">
-            <!-- Window Controls -->
-            <div class="bg-slate-900/50 px-4 py-3 border-b border-slate-700 flex items-center gap-2">
-              <div class="w-3 h-3 rounded-full bg-red-500"></div>
-              <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <div class="w-3 h-3 rounded-full bg-green-500"></div>
-              <span class="ml-4 text-xs text-slate-500 font-mono">config/routes.php</span>
-            </div>
-            <!-- Code Area -->
-            <div class="p-4 sm:p-6 overflow-x-auto text-sm font-mono leading-relaxed text-slate-300">
-              <pre><code><span class="text-slate-500">&lt;?php</span>
-
-<span class="text-brand-500">use</span> FastRoute\RouteCollector;
-<span class="text-brand-500">use</span> App\Controllers\UserController;
-<span class="text-brand-500">use</span> App\Controllers\AuthController;
-
-<span class="text-slate-400">// Roteamento limpo e declarativo</span>
-<span class="text-blue-400">return</span> <span class="text-blue-400">function</span>(RouteCollector <span class="text-yellow-300">$r</span>) {
-    
-    <span class="text-slate-400">// Autenticação</span>
-    <span class="text-yellow-300">$r</span>-><span class="text-blue-200">addRoute</span>(<span class="text-green-400">'POST'</span>, <span class="text-green-400">'/api/login'</span>, [AuthController::<span class="text-blue-400">class</span>, <span class="text-green-400">'login'</span>]);
-    
-    <span class="text-slate-400">// Rotas protegidas (Requer JWT)</span>
-    <span class="text-yellow-300">$r</span>-><span class="text-blue-200">addGroup</span>(<span class="text-green-400">'/api/users'</span>, <span class="text-blue-400">function</span> (RouteCollector <span class="text-yellow-300">$r</span>) {
-        <span class="text-yellow-300">$r</span>-><span class="text-blue-200">addRoute</span>(<span class="text-green-400">'GET'</span>, <span class="text-green-400">''</span>, [UserController::<span class="text-blue-400">class</span>, <span class="text-green-400">'index'</span>]);
-        <span class="text-yellow-300">$r</span>-><span class="text-blue-200">addRoute</span>(<span class="text-green-400">'POST'</span>, <span class="text-green-400">''</span>, [UserController::<span class="text-blue-400">class</span>, <span class="text-green-400">'store'</span>]);
-        <span class="text-yellow-300">$r</span>-><span class="text-blue-200">addRoute</span>(<span class="text-green-400">'GET'</span>, <span class="text-green-400">'/{id:\d+}'</span>, [UserController::<span class="text-blue-400">class</span>, <span class="text-green-400">'show'</span>]);
-    });
-};</code></pre>
-            </div>
-          </div>
+        <h1 class="text-5xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-6 leading-tight">
+          A Base Sólida para <br class="hidden sm:block"/>
+          Suas APIs <span class="text-gradient">RESTful</span>
+        </h1>
+        
+        <p class="mt-6 text-lg sm:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
+          <strong>Parrot PHP</strong> é uma estrutura arquitetural de alta performance que entrega tudo o que você precisa sem a sobrecarga de frameworks completos.
+          O poder do <strong>PHP 8.4+</strong> aliado ao roteamento ultra-rápido, injeção de dependências nativa, segurança OWASP e Eloquent ORM. 
+        </p>
+        
+        <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <a href="#comece" class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 text-base font-bold rounded-xl text-white bg-brand-600 hover:bg-brand-500 transition-all shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] transform hover:-translate-y-1">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            Começar Agora
+          </a>
+          <a href="#code-showcase" class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 border border-slate-700 hover:border-slate-500 text-base font-bold rounded-xl text-slate-300 bg-slate-800/50 hover:bg-slate-700/50 backdrop-blur-sm transition-all transform hover:-translate-y-1">
+            Ver o Código
+          </a>
+        </div>
+        
+        <div class="mt-10 flex items-center justify-center gap-6 text-sm font-medium text-slate-500">
+          <div class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> MariaDB/MySQL</div>
+          <div class="flex items-center gap-2"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> HTTP PSR-7/15</div>
+          <div class="flex items-center gap-2 hidden sm:flex"><svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> JWT Nativo</div>
         </div>
       </div>
     </div>
   </main>
 
-  <!-- Logo Cloud / Tech Stack -->
-  <div class="border-y border-slate-800 bg-slate-900/50">
-    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <p class="text-center text-sm font-semibold uppercase text-slate-500 tracking-wider mb-6">
-        Construído com os melhores pacotes
-      </p>
-      <div
-        class="flex justify-center flex-wrap gap-8 md:gap-16 opacity-70 grayscale hover:grayscale-0 transition-all duration-500">
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-lg text-white">PHP 8.4+</span>
+  <!-- Code Showcase (Interactive Tabs) -->
+  <section id="code-showcase" class="py-24 relative z-10">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-12">
+        <h2 class="text-brand-500 font-bold tracking-widest uppercase text-sm mb-2">Showcase de Código</h2>
+        <h3 class="text-3xl md:text-4xl font-extrabold text-white">Limpo. Tipado. Expressivo.</h3>
+        <p class="mt-4 text-lg text-slate-400">Uma arquitetura feita para desenvolvedores que valorizam as melhores práticas.</p>
+      </div>
+
+      <div x-data="{ activeTab: 'controller' }" class="glass-card rounded-2xl overflow-hidden border border-slate-700/50 shadow-2xl">
+        <!-- Window Chrome -->
+        <div class="bg-slate-900/80 px-4 py-3 border-b border-slate-700/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full bg-red-500/80 border border-red-500/50"></div>
+            <div class="w-3 h-3 rounded-full bg-yellow-500/80 border border-yellow-500/50"></div>
+            <div class="w-3 h-3 rounded-full bg-green-500/80 border border-green-500/50"></div>
+          </div>
+          <!-- Tabs -->
+          <div class="flex space-x-1 sm:space-x-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+            <button @click="activeTab = 'routes'" :class="{'bg-slate-700 text-brand-300 font-semibold shadow-inner': activeTab === 'routes', 'text-slate-400 hover:text-white hover:bg-slate-700/50': activeTab !== 'routes'}" class="px-3 py-1.5 rounded-md text-xs sm:text-sm font-mono transition-colors whitespace-nowrap">routes.php</button>
+            <button @click="activeTab = 'controller'" :class="{'bg-slate-700 text-brand-300 font-semibold shadow-inner': activeTab === 'controller', 'text-slate-400 hover:text-white hover:bg-slate-700/50': activeTab !== 'controller'}" class="px-3 py-1.5 rounded-md text-xs sm:text-sm font-mono transition-colors whitespace-nowrap">UsuarioController.php</button>
+            <button @click="activeTab = 'resource'" :class="{'bg-slate-700 text-brand-300 font-semibold shadow-inner': activeTab === 'resource', 'text-slate-400 hover:text-white hover:bg-slate-700/50': activeTab !== 'resource'}" class="px-3 py-1.5 rounded-md text-xs sm:text-sm font-mono transition-colors whitespace-nowrap">UsuarioResource.php</button>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-lg text-white">FastRoute</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-lg text-white">Eloquent ORM</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-lg text-white">PHPUnit</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-lg text-white">Docker</span>
+
+        <!-- Tab Contents -->
+        <div class="bg-[#0f111a] p-4 sm:p-6 overflow-x-auto">
+          
+          <!-- ROUTES -->
+          <div x-show="activeTab === 'routes'" x-transition.opacity.duration.300ms>
+            <pre class="font-mono text-sm leading-loose"><code class="language-php"><span class="text-slate-500 italic">&lt;?php</span>
+<span class="text-purple-400">declare</span>(strict_types=1);
+
+<span class="text-purple-400">use</span> FastRoute\RouteCollector;
+<span class="text-purple-400">use</span> App\Controllers\UsuarioController;
+<span class="text-purple-400">use</span> App\Middlewares\JwtAuthMiddleware;
+
+<span class="text-slate-400 italic">// Roteamento agrupado com Middlewares nativos</span>
+<span class="text-blue-400">return function</span>(RouteCollector <span class="text-yellow-200">$r</span>) {
+    <span class="text-yellow-200">$r</span>-><span class="text-blue-300">addGroup</span>(<span class="text-green-300">'/api/usuarios'</span>, <span class="text-blue-400">function</span> (RouteCollector <span class="text-yellow-200">$r</span>) {
+        <span class="text-slate-400 italic">// Rotas protegidas exigem o JwtAuthMiddleware</span>
+        <span class="text-yellow-200">$r</span>-><span class="text-blue-300">addRoute</span>(<span class="text-green-300">'GET'</span>, <span class="text-green-300">''</span>, [UsuarioController::<span class="text-blue-300">class</span>, <span class="text-green-300">'index'</span>, JwtAuthMiddleware::<span class="text-blue-300">class</span>]);
+        <span class="text-yellow-200">$r</span>-><span class="text-blue-300">addRoute</span>(<span class="text-green-300">'POST'</span>, <span class="text-green-300">''</span>, [UsuarioController::<span class="text-blue-300">class</span>, <span class="text-green-300">'store'</span>]);
+        <span class="text-yellow-200">$r</span>-><span class="text-blue-300">addRoute</span>(<span class="text-green-300">'PUT'</span>, <span class="text-green-300">'/{id:\d+}'</span>, [UsuarioController::<span class="text-blue-300">class</span>, <span class="text-green-300">'update'</span>, JwtAuthMiddleware::<span class="text-blue-300">class</span>]);
+    });
+};</code></pre>
+          </div>
+
+          <!-- CONTROLLER -->
+          <div x-show="activeTab === 'controller'" x-transition.opacity.duration.300ms style="display: none;">
+            <pre class="font-mono text-sm leading-loose"><code class="language-php"><span class="text-purple-400">namespace</span> App\Controllers;
+
+<span class="text-purple-400">use</span> App\Models\UsuarioModel;
+<span class="text-purple-400">use</span> App\Views\UsuarioResource;
+<span class="text-purple-400">use</span> App\Exceptions\BadRequestException;
+<span class="text-purple-400">use</span> Psr\Http\Message\ResponseInterface;
+<span class="text-purple-400">use</span> Psr\Http\Message\ServerRequestInterface;
+
+<span class="text-purple-400">class</span> <span class="text-yellow-300">UsuarioController</span> <span class="text-purple-400">extends</span> Controller  
+{  
+    <span class="text-slate-400 italic">// Injeção de Dependências via PHP-DI</span>
+    <span class="text-blue-400">public function</span> <span class="text-blue-300">__construct</span>(
+        <span class="text-blue-400">protected</span> UsuarioModel <span class="text-yellow-200">$model</span>,
+        <span class="text-blue-400">protected</span> UsuarioResource <span class="text-yellow-200">$resource</span>
+    ) {}
+
+    <span class="text-blue-400">public function</span> <span class="text-blue-300">store</span>(ServerRequestInterface <span class="text-yellow-200">$request</span>): ResponseInterface
+    {  
+        <span class="text-yellow-200">$data</span> = <span class="text-yellow-200">$this</span>-><span class="text-blue-300">getBody</span>(<span class="text-yellow-200">$request</span>);
+        <span class="text-yellow-200">$errors</span> = <span class="text-yellow-200">$this</span>-><span class="text-blue-300">validate</span>(<span class="text-yellow-200">$data</span>, [<span class="text-green-300">'nome'</span> => <span class="text-green-300">'required'</span>, <span class="text-green-300">'email'</span> => <span class="text-green-300">'email|required'</span>]);
+
+        <span class="text-purple-400">if</span> (!<span class="text-blue-300">empty</span>(<span class="text-yellow-200">$errors</span>)) {
+            <span class="text-purple-400">throw new</span> BadRequestException(<span class="text-green-300">'Dados inválidos.'</span>);  
+        }
+
+        <span class="text-slate-400 italic">// Senhas são formatadas com PASSWORD_ARGON2ID</span>
+        <span class="text-yellow-200">$usuario</span> = <span class="text-yellow-200">$this</span>->model-><span class="text-blue-300">create</span>([
+            <span class="text-green-300">'nome'</span>  => <span class="text-blue-300">htmlspecialchars</span>((string) <span class="text-yellow-200">$data</span>[<span class="text-green-300">'nome'</span>]),
+            <span class="text-green-300">'email'</span> => <span class="text-yellow-200">$data</span>[<span class="text-green-300">'email'</span>],
+            <span class="text-green-300">'senha'</span> => <span class="text-blue-300">password_hash</span>(<span class="text-yellow-200">$data</span>[<span class="text-green-300">'senha'</span>], PASSWORD_ARGON2ID),
+        ]);
+
+        <span class="text-purple-400">return</span> <span class="text-yellow-200">$this</span>->resource-><span class="text-blue-300">created</span>(<span class="text-yellow-200">$this</span>->resource-><span class="text-blue-300">item</span>(<span class="text-yellow-200">$usuario</span>-><span class="text-blue-300">toArray</span>()));
+    }  
+}</code></pre>
+          </div>
+
+          <!-- RESOURCE -->
+          <div x-show="activeTab === 'resource'" x-transition.opacity.duration.300ms style="display: none;">
+            <pre class="font-mono text-sm leading-loose"><code class="language-php"><span class="text-purple-400">namespace</span> App\Views;
+
+<span class="text-purple-400">class</span> <span class="text-yellow-300">UsuarioResource</span> <span class="text-purple-400">extends</span> Resource  
+{  
+    <span class="text-slate-400 italic">/**
+     * Transforma um item antes de retornar em JSON.
+     * Semelhante ao Laravel API Resources.
+     */</span>
+    <span class="text-blue-400">protected function</span> <span class="text-blue-300">transform</span>(<span class="text-purple-400">array</span> <span class="text-yellow-200">$item</span>): <span class="text-purple-400">array</span>
+    {
+        <span class="text-purple-400">return</span> [
+            <span class="text-green-300">'id'</span>         => <span class="text-yellow-200">$item</span>[<span class="text-green-300">'id'</span>],
+            <span class="text-green-300">'nome'</span>       => <span class="text-yellow-200">$item</span>[<span class="text-green-300">'nome'</span>],
+            <span class="text-green-300">'email'</span>      => <span class="text-yellow-200">$item</span>[<span class="text-green-300">'email'</span>],
+            <span class="text-green-300">'criado_em'</span>  => <span class="text-blue-300">date</span>(<span class="text-green-300">'d/m/Y H:i'</span>, <span class="text-blue-300">strtotime</span>(<span class="text-yellow-200">$item</span>[<span class="text-green-300">'created_at'</span>])),
+            <span class="text-slate-400 italic">// Observe que a 'senha' nunca é retornada na view!</span>
+        ];
+    }
+}</code></pre>
+          </div>
+
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Features Section -->
-  <section id="recursos" class="py-20 relative">
+  <!-- Expanded Features Section -->
+  <section id="recursos" class="py-24 relative z-10 bg-slate-900/40 border-y border-slate-800/50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center max-w-3xl mx-auto mb-16">
-        <h2 class="text-brand-500 font-semibold tracking-wide uppercase">Por que o Parrot PHP?</h2>
+        <h2 class="text-brand-500 font-bold tracking-widest uppercase text-sm mb-2">Fundação Robusta</h2>
         <p class="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-white sm:text-4xl">
-          Tudo o que você precisa, nada além disso.
+          Construído sob Excelência Técnica
         </p>
-        <p class="mt-4 max-w-2xl text-xl text-slate-400 mx-auto">
-          Desenvolvido para ser o ponto de partida ideal para microsserviços e APIs focadas em performance, mantendo a
-          DX (Developer Experience) incrível.
+        <p class="mt-4 text-lg text-slate-400">
+          O Parrot PHP não reinventa a roda; ele integra de forma magistral os pacotes mais sólidos da comunidade PHP com as mais restritas normas de segurança.
         </p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         <!-- Feature 1 -->
-        <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl hover:bg-slate-800 transition-colors">
-          <div class="w-12 h-12 bg-brand-500/20 text-brand-500 rounded-xl flex items-center justify-center mb-4">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z">
-              </path>
-            </svg>
+        <div class="glass-card p-8 rounded-2xl group">
+          <div class="w-14 h-14 bg-indigo-500/10 text-indigo-400 rounded-2xl flex items-center justify-center mb-6 border border-indigo-500/20 group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
           </div>
-          <h3 class="text-xl font-bold text-white mb-2">Roteamento Ultrarrápido</h3>
-          <p class="text-slate-400">Implementação baseada no <code>nikic/fast-route</code>, garantindo o processamento
-            de rotas mais rápido disponível no ecossistema PHP.</p>
+          <h3 class="text-xl font-bold text-white mb-3 tracking-tight">PHP 8.4+ Strict</h3>
+          <p class="text-slate-400 font-light leading-relaxed">Desenvolvido com tipagem rigorosa (`declare(strict_types=1);`), union types, e construtores promovidos para garantir código à prova de falhas.</p>
         </div>
 
         <!-- Feature 2 -->
-        <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl hover:bg-slate-800 transition-colors">
-          <div class="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-xl flex items-center justify-center mb-4">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4">
-              </path>
-            </svg>
+        <div class="glass-card p-8 rounded-2xl group">
+          <div class="w-14 h-14 bg-red-500/10 text-red-400 rounded-2xl flex items-center justify-center mb-6 border border-red-500/20 group-hover:scale-110 group-hover:bg-red-500/20 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
           </div>
-          <h3 class="text-xl font-bold text-white mb-2">Eloquent ORM</h3>
-          <p class="text-slate-400">Aproveite a sintaxe elegante e poderosa do Eloquent (do Laravel) para interagir com
-            seu banco de dados, independente do framework.</p>
+          <h3 class="text-xl font-bold text-white mb-3 tracking-tight">Segurança OWASP Global</h3>
+          <p class="text-slate-400 font-light leading-relaxed">Proteção by-design contra SQL Injection, senhas em Argon2id nativo, XSS mitigation e Rate Limits integrados via pipeline de middlewares.</p>
         </div>
 
         <!-- Feature 3 -->
-        <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl hover:bg-slate-800 transition-colors">
-          <div class="w-12 h-12 bg-purple-500/20 text-purple-400 rounded-xl flex items-center justify-center mb-4">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
-              </path>
-            </svg>
+        <div class="glass-card p-8 rounded-2xl group">
+          <div class="w-14 h-14 bg-brand-500/10 text-brand-500 rounded-2xl flex items-center justify-center mb-6 border border-brand-500/20 group-hover:scale-110 group-hover:bg-brand-500/20 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
           </div>
-          <h3 class="text-xl font-bold text-white mb-2">Segurança "Out-of-box"</h3>
-          <p class="text-slate-400">Middlewares nativos de Autenticação JWT, Rate Limiting (evita abusos), CORS
-            configurável e Security Headers de fábrica.</p>
+          <h3 class="text-xl font-bold text-white mb-3 tracking-tight">Autenticação JWT Stateful</h3>
+          <p class="text-slate-400 font-light leading-relaxed">Gerenciamento seguro de sessão que vai além. Login via cookies HttpOnly e sistema de controle de Blacklist (Tokens Revogados) embutido no banco.</p>
         </div>
-
+        
         <!-- Feature 4 -->
-        <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl hover:bg-slate-800 transition-colors">
-          <div class="w-12 h-12 bg-yellow-500/20 text-yellow-400 rounded-xl flex items-center justify-center mb-4">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
-              </path>
-            </svg>
+        <div class="glass-card p-8 rounded-2xl group">
+          <div class="w-14 h-14 bg-blue-500/10 text-blue-400 rounded-2xl flex items-center justify-center mb-6 border border-blue-500/20 group-hover:scale-110 group-hover:bg-blue-500/20 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
           </div>
-          <h3 class="text-xl font-bold text-white mb-2">Padrões PSR (7 e 15)</h3>
-          <p class="text-slate-400">Totalmente compatível com as interfaces HTTP do PHP-FIG (Nyholm/psr7). Facilita a
-            portabilidade e os testes unitários da aplicação.</p>
+          <h3 class="text-xl font-bold text-white mb-3 tracking-tight">Eloquent ORM Standalone</h3>
+          <p class="text-slate-400 font-light leading-relaxed">Configure e manipule com MariaDB/MySQL usando o ORM mais amado (Laravel Database). Migrations e Seeds incluídos no core (database/scripts).</p>
         </div>
-
+        
         <!-- Feature 5 -->
-        <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl hover:bg-slate-800 transition-colors">
-          <div class="w-12 h-12 bg-indigo-500/20 text-indigo-400 rounded-xl flex items-center justify-center mb-4">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
-              </path>
-            </svg>
+        <div class="glass-card p-8 rounded-2xl group">
+          <div class="w-14 h-14 bg-yellow-500/10 text-yellow-500 rounded-2xl flex items-center justify-center mb-6 border border-yellow-500/20 group-hover:scale-110 group-hover:bg-yellow-500/20 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
           </div>
-          <h3 class="text-xl font-bold text-white mb-2">Pronto para Produção</h3>
-          <p class="text-slate-400">Acompanha configurações otimizadas para Docker e Caddy Server, garantindo HTTPS
-            automático e deploy simplificado.</p>
+          <h3 class="text-xl font-bold text-white mb-3 tracking-tight">FastRoute & PSR-7/15</h3>
+          <p class="text-slate-400 font-light leading-relaxed">Roteamento nativo usando nikic/fast-route, processando requisições sob os moldes rigorosos das interfaces HTTP do PHP-FIG (Nyholm).</p>
         </div>
 
         <!-- Feature 6 -->
-        <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl hover:bg-slate-800 transition-colors">
-          <div class="w-12 h-12 bg-red-500/20 text-red-400 rounded-xl flex items-center justify-center mb-4">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
+        <div class="glass-card p-8 rounded-2xl group">
+          <div class="w-14 h-14 bg-teal-500/10 text-teal-400 rounded-2xl flex items-center justify-center mb-6 border border-teal-500/20 group-hover:scale-110 group-hover:bg-teal-500/20 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
           </div>
-          <h3 class="text-xl font-bold text-white mb-2">TDD Orientado</h3>
-          <p class="text-slate-400">Ambiente pré-configurado com PHPUnit. Já inclui testes de CRUD de usuários,
-            autenticação JWT e tratamentos de exceção.</p>
+          <h3 class="text-xl font-bold text-white mb-3 tracking-tight">Test-Driven (PHPUnit)</h3>
+          <p class="text-slate-400 font-light leading-relaxed">Já entregue com ampla cobertura de testes de integração, testando efetivamente endpoints em banco de dados real em vez de SQLite local.</p>
+        </div>
+      
+        <!-- Feature 7 -->
+        <div class="glass-card p-8 rounded-2xl group">
+          <div class="w-14 h-14 bg-purple-500/10 text-purple-400 rounded-2xl flex items-center justify-center mb-6 border border-purple-500/20 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-3 tracking-tight">Injeção de Dependências</h3>
+          <p class="text-slate-400 font-light leading-relaxed">Contêiner configurado usando PHP-DI. Classes, Controllers e Middlewares recebem suas dependências automaticamente através de construtores.</p>
+        </div>
+
+        <!-- Feature 8 -->
+        <div class="glass-card p-8 rounded-2xl group">
+          <div class="w-14 h-14 bg-pink-500/10 text-pink-400 rounded-2xl flex items-center justify-center mb-6 border border-pink-500/20 group-hover:scale-110 group-hover:bg-pink-500/20 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-3 tracking-tight">Padrão em Respostas JSON</h3>
+          <p class="text-slate-400 font-light leading-relaxed">Uma camada dedicada de Views (Resources) para isolar completamente a lógica de transformação dos retornos e mascarar dados sensíveis da API.</p>
+        </div>
+
+        <!-- Feature 9 -->
+        <div class="glass-card p-8 rounded-2xl group">
+          <div class="w-14 h-14 bg-orange-500/10 text-orange-400 rounded-2xl flex items-center justify-center mb-6 border border-orange-500/20 group-hover:scale-110 group-hover:bg-orange-500/20 transition-all">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-3 tracking-tight">Pronto para Produção</h3>
+          <p class="text-slate-400 font-light leading-relaxed">Alta compatibilidade com FrankenPHP e Caddy Server, garantindo que sua aplicação receba milhares de conexões em pouquíssimos milissegundos.</p>
         </div>
       </div>
+
     </div>
   </section>
 
-  <!-- Architecture / Code Structure -->
-  <section id="arquitetura" class="py-20 bg-slate-800/30 border-y border-slate-800">
+  <!-- Architecture & Middlewares -->
+  <section id="arquitetura" class="py-24 relative z-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
+        
         <div>
-          <h2 class="text-3xl font-extrabold text-white mb-6">Arquitetura Limpa e Intuitiva</h2>
-          <p class="text-slate-400 mb-6 text-lg">
-            Diga adeus à "mágica" excessiva. No Parrot PHP, o fluxo da requisição é claro e fácil de seguir. Você tem
-            total controle sobre seus Controllers, Middlewares e Injeção de Dependências.
+          <h2 class="text-brand-500 font-bold tracking-widest uppercase text-sm mb-2">Visão Estrutural</h2>
+          <h3 class="text-3xl sm:text-4xl font-extrabold text-white mb-6">Arquitetura Limpa e Desacoplada</h3>
+          <p class="text-slate-400 mb-6 text-lg font-light leading-relaxed">
+            Parrot PHP encoraja a adoção de Single Responsibility e separação de camadas. Nenhuma requisição atinge o Controller de forma insegura.
           </p>
-          <ul class="space-y-4 text-slate-300">
+          <ul class="space-y-6 mt-8">
             <li class="flex items-start">
-              <svg class="flex-shrink-0 h-6 w-6 text-brand-500 mr-3" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span><strong>Padrão MVC Simplificado:</strong> Controllers enxutos retornando Respostas
-                padronizadas.</span>
+              <div class="flex-shrink-0 h-10 w-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 border border-slate-600 flex items-center justify-center mt-1 mr-4 shadow-lg text-white font-bold">1</div>
+              <div>
+                <h4 class="text-white font-semibold text-xl">Interceptação Perfeita (Middlewares)</h4>
+                <p class="text-slate-400 text-sm mt-2 leading-relaxed">Rate Limiting, CORS, Proteção JWT e Headers de Segurança agem como um escudo rigoroso inspirado na documentação OWASP, processados antes da sua lógica de negócio.</p>
+              </div>
             </li>
             <li class="flex items-start">
-              <svg class="flex-shrink-0 h-6 w-6 text-brand-500 mr-3" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span><strong>Container PHP-DI:</strong> Injeção de dependências robusta e eficiente.</span>
+              <div class="flex-shrink-0 h-10 w-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center mt-1 mr-4 shadow-[0_0_15px_rgba(16,185,129,0.4)] text-white font-bold">2</div>
+              <div>
+                <h4 class="text-white font-semibold text-xl">Lógica Isolada (Controllers & Models)</h4>
+                <p class="text-slate-400 text-sm mt-2 leading-relaxed">Todo acesso a dados usa o consagrado <span class="text-brand-400">Eloquent ORM</span> sem risco de SQL injection. Controllers apenas coordenam o fluxo.</p>
+              </div>
             </li>
             <li class="flex items-start">
-              <svg class="flex-shrink-0 h-6 w-6 text-brand-500 mr-3" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              <span><strong>Tratamento de Exceções Global:</strong> Retornos em JSON automáticos para erros 404, 401,
-                500, etc.</span>
+              <div class="flex-shrink-0 h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mt-1 mr-4 shadow-[0_0_15px_rgba(59,130,246,0.4)] text-white font-bold">3</div>
+              <div>
+                <h4 class="text-white font-semibold text-xl">Retorno Padronizado (Resources)</h4>
+                <p class="text-slate-400 text-sm mt-2 leading-relaxed">A camada final `src/Views` garante que propriedades indesejadas (como hashes de senhas e tokens ocultos) nunca vazem no output da API.</p>
+              </div>
             </li>
           </ul>
         </div>
 
-        <div class="mt-10 lg:mt-0">
-          <div class="bg-[#1e1e1e] rounded-xl shadow-2xl border border-slate-700 p-6 font-mono text-sm overflow-hidden">
-            <pre class="text-slate-300"><code><span class="text-slate-500">app/</span>
-├── <span class="text-blue-400">Controllers/</span>
-│   ├── AuthController.php
-│   └── UserController.php
-├── <span class="text-blue-400">Core/</span>
-│   ├── Application.php
-│   └── MiddlewareQueue.php
-├── <span class="text-blue-400">Exceptions/</span>
-├── <span class="text-blue-400">Middlewares/</span>
-│   ├── JwtAuthMiddleware.php
-│   └── RateLimitMiddleware.php
-├── <span class="text-blue-400">Models/</span>
-│   └── UserModel.php
-└── <span class="text-blue-400">Views/</span>
-    └── UserResource.php
-<span class="text-slate-500">config/</span>
-├── container.php
-├── middlewares.php
-└── routes.php
-<span class="text-slate-500">public/</span>
-└── index.php</code></pre>
+
+        <div class="mt-12 lg:mt-0 relative group">
+          <div class="absolute -inset-1 bg-gradient-to-r from-brand-600 to-blue-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+          <div class="relative glass-card rounded-2xl p-6 md:p-8">
+            <h4 class="text-white font-semibold mb-6 flex items-center gap-2">
+              <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              Estrutura de Diretórios
+            </h4>
+            <pre class="text-slate-300 font-mono text-sm leading-loose"><code><span class="text-slate-500">parrot-php/</span>
+├── <span class="text-blue-400 font-semibold">config/</span>        <span class="text-slate-500 italic"># DI Container, Rotas</span>
+├── <span class="text-blue-400 font-semibold">database/</span>      <span class="text-slate-500 italic"># Migrations CLI, Seeds</span>
+├── <span class="text-blue-400 font-semibold">public/</span>        <span class="text-slate-500 italic"># front-controller index.php</span>
+└── <span class="text-blue-400 font-semibold">src/</span>
+    ├── <span class="text-teal-400 font-semibold">Controllers/</span> <span class="text-slate-500 italic"># Handlers (Ponto de entrada)</span>
+    ├── <span class="text-teal-400 font-semibold">Core/</span>        <span class="text-slate-500 italic"># Núcleo da Aplicação PSR</span>
+    ├── <span class="text-teal-400 font-semibold">Exceptions/</span>  <span class="text-slate-500 italic"># Exceções HTTP Customizadas</span>
+    ├── <span class="text-teal-400 font-semibold">Middlewares/</span> <span class="text-slate-500 italic"># Camadas de Processamento HTTP</span>
+    ├── <span class="text-teal-400 font-semibold">Models/</span>      <span class="text-slate-500 italic"># Camada de Dados (Eloquent)</span>
+    └── <span class="text-teal-400 font-semibold">Views/</span>       <span class="text-slate-500 italic"># View layer (Classes Resource Json)</span></code></pre>
+            <div class="mt-6 pt-6 border-t border-slate-700/50 flex justify-between items-center text-xs text-slate-400 font-mono">
+              <span>Dependências Geridas via <strong>PHP-DI</strong></span>
+              <span>100% PSR-7 / PSR-15</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Getting Started Section -->
-  <section id="comece" class="py-24">
+  <!-- Getting Started / Terminal Section -->
+  <section id="comece" class="py-24 relative z-10 bg-[#060912]">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <h2 class="text-3xl font-extrabold text-white mb-4">Comece em Segundos</h2>
-      <p class="text-slate-400 mb-10 text-lg">
-        Clone o repositório, instale as dependências e inicie o servidor embutido ou use o Docker.
+      <h2 class="text-3xl font-extrabold text-white mb-4">Pronto para rodar em Segundos</h2>
+      <p class="text-slate-400 mb-12 text-lg">
+        Clonou, Instalou, Rodou. Perfeito para ambiente Serverless, Caddy ou FrankenPHP.
       </p>
 
-      <!-- Terminal Component com Alpine para cópia -->
-      <div
-        x-data="{ copied: false, command: 'git clone https://github.com/arthur-oliveira-oficial/parrot-php.git meu-projeto\ncd meu-projeto\ncomposer install\ncp .env.example .env\nphp -S localhost:8000 -t public' }"
-        class="bg-[#0d1117] rounded-xl border border-slate-700 text-left overflow-hidden shadow-xl max-w-2xl mx-auto">
-        <div class="flex justify-between items-center px-4 py-2 bg-slate-800 border-b border-slate-700">
-          <span class="text-xs text-slate-400 font-mono">Terminal</span>
-          <button @click="navigator.clipboard.writeText(command); copied = true; setTimeout(() => copied = false, 2000)"
-            class="text-slate-400 hover:text-white transition-colors flex items-center gap-1 text-xs">
-            <svg x-show="!copied" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
-              </path>
-            </svg>
-            <svg x-show="copied" style="display: none;" class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor"
-              viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span x-text="copied ? 'Copiado!' : 'Copiar'"></span>
+      <div x-data="{ copied: false, command: 'git clone https://github.com/arthur-oliveira-oficial/parrot-php.git meu-projeto\ncd meu-projeto\ncomposer install\ncp .env.example .env\nphp database/scripts/migrate.php\nphp -S localhost:8000 -t public' }" class="text-left rounded-xl overflow-hidden shadow-2xl border border-slate-800 bg-[#0a0f1c]">
+        <div class="flex items-center justify-between px-4 py-3 bg-[#111827] border-b border-slate-800">
+          <div class="flex gap-2">
+            <div class="w-3 h-3 rounded-full bg-slate-700"></div>
+            <div class="w-3 h-3 rounded-full bg-slate-700"></div>
+            <div class="w-3 h-3 rounded-full bg-slate-700"></div>
+          </div>
+          <button @click="navigator.clipboard.writeText(command); copied = true; setTimeout(() => copied = false, 2000)" class="text-slate-400 hover:text-white transition-colors flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider bg-white/5 py-1 px-3 rounded-md">
+            <svg x-show="!copied" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+            <svg x-show="copied" style="display: none;" class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            <span x-text="copied ? 'Copiado!' : 'Copiar Script'"></span>
           </button>
         </div>
-        <div class="p-6 font-mono text-sm leading-relaxed text-slate-300 whitespace-pre overflow-x-auto"><span
-            class="text-brand-500">$</span> git clone https://github.com/arthur-oliveira-oficial/parrot-php.git
-          meu-projeto
-          <span class="text-brand-500">$</span> cd meu-projeto
-          <span class="text-brand-500">$</span> composer install
-          <span class="text-brand-500">$</span> cp .env.example .env
-          <span class="text-brand-500">$</span> php -S localhost:8000 -t public
+        <div class="p-6 sm:p-8 font-mono text-sm leading-loose text-slate-300 overflow-x-auto whitespace-pre">
+<span class="text-brand-500 select-none">~ $</span> git clone https://github.com/arthur-oliveira-oficial/parrot-php.git parrot-api
+<span class="text-brand-500 select-none">~ $</span> cd parrot-api
+<span class="text-brand-500 select-none">~/parrot-api $</span> composer install
+<span class="text-brand-500 select-none">~/parrot-api $</span> cp .env.example .env <span class="text-slate-500 italic"># Configure o DB MariaDB</span>
+<span class="text-brand-500 select-none">~/parrot-api $</span> php database/scripts/migrate.php <span class="text-blue-400">&amp;&amp;</span> php database/scripts/seed.php
+<span class="text-brand-500 select-none">~/parrot-api $</span> php -S localhost:8000 -t public
         </div>
       </div>
-
-      <div class="mt-12">
-        <a href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank"
-          class="text-brand-500 hover:text-brand-400 font-medium inline-flex items-center gap-1">
-          Ler a documentação completa no GitHub
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-          </svg>
-        </a>
-      </div>
+      
+      <p class="mt-8 text-sm text-slate-500 font-medium tracking-wide">
+        Veja a configuração avançada para <code class="text-brand-400 px-1 py-0.5 rounded bg-brand-400/10">Caddyfile</code> na documentação.
+      </p>
     </div>
   </section>
 
   <!-- Footer -->
-  <footer class="bg-slate-900 border-t border-slate-800 py-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-      <div class="flex items-center gap-2">
-        <span class="text-2xl">🦜</span>
-        <span class="font-bold text-white tracking-tight">Parrot PHP</span>
-      </div>
+  <footer class="bg-[#020617] border-t border-slate-800/50 py-12 relative z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+        <div class="flex items-center gap-2 group cursor-pointer" onclick="window.scrollTo(0,0)">
+          <div class="w-8 h-8 rounded-lg bg-brand-500/10 flex items-center justify-center border border-brand-500/20 group-hover:border-brand-500/50 transition-colors">
+            <span class="text-xl">🦜</span>
+          </div>
+          <span class="font-bold text-white tracking-tight">Parrot PHP</span>
+        </div>
 
-      <p class="text-slate-500 text-sm text-center md:text-left">
-        Criado por <a href="https://github.com/arthur-oliveira-oficial" target="_blank"
-          class="text-slate-300 hover:text-white underline decoration-slate-700 underline-offset-4">Arthur Oliveira</a>.
-        Código fonte sob a licença MIT.
-      </p>
+        <p class="text-slate-500 text-sm text-center md:text-left">
+          Idealizado com 💚 por <a href="https://github.com/arthur-oliveira-oficial" target="_blank" class="text-slate-300 font-medium hover:text-brand-400 transition-colors">Arthur Oliveira</a>.
+          Distribuído sob Licença MIT.
+        </p>
 
-      <div class="flex space-x-6">
-        <a href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank"
-          class="text-slate-500 hover:text-white transition-colors">
-          <span class="sr-only">GitHub</span>
-          <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill-rule="evenodd"
-              d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
-              clip-rule="evenodd" />
-          </svg>
-        </a>
+        <div class="flex space-x-6">
+          <a href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank" class="text-slate-500 hover:text-white hover:scale-110 transition-all p-2 rounded-full hover:bg-slate-800">
+            <span class="sr-only">GitHub</span>
+            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
+            </svg>
+          </a>
+        </div>
       </div>
     </div>
   </footer>
 </body>
-
 </html>

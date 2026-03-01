@@ -42,6 +42,51 @@ abstract class TestCase extends PHPUnitTestCase
 
         // Factory PSR-17 para criar requests
         $this->psr17Factory = new Psr17Factory();
+
+        $this->resetDatabase();
+    }
+
+    /**
+     * Reseta o banco de dados antes de cada teste
+     */
+    protected function resetDatabase(): void
+    {
+        $capsule = $this->container->get(\App\Core\DatabaseCapsule::class)->getCapsule();
+        $schema = $capsule->schema();
+
+        // Remove tabelas se existirem
+        $schema->dropAllTables();
+
+        // Recria tabela de migrations
+        $schema->create('migrations', function ($table) {
+            $table->increments('id');
+            $table->string('migration')->unique();
+            $table->timestamp('executed_at')->nullable();
+        });
+
+        // Executa todas as migrations
+        $migrationFiles = glob(dirname(__DIR__) . '/database/migrations/*.php');
+        sort($migrationFiles);
+
+        foreach ($migrationFiles as $migrationFile) {
+            $migrationName = basename($migrationFile);
+            $migrationClass = require $migrationFile;
+            $migrationClass->up();
+
+            $capsule->table('migrations')->insert([
+                'migration' => $migrationName,
+                'executed_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        // Executa seeds
+        $pdo = $capsule->getConnection()->getPdo();
+        $seedFiles = glob(dirname(__DIR__) . '/database/seed/*.php');
+        sort($seedFiles);
+
+        foreach ($seedFiles as $seedFile) {
+            require $seedFile;
+        }
     }
 
     /**

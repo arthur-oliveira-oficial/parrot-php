@@ -74,7 +74,7 @@ return [
             'driver' => env_config('DB_DRIVER', 'mysql'),
             'host' => env_config('DB_HOST', 'localhost'),
             'port' => env_config('DB_PORT', '3306'),
-            'name' => env_config('DB_NAME', 'parrot_db'),
+            'name' => env_config('DB_DATABASE', env_config('DB_NAME', 'parrot_db')),
             'user' => env_config('DB_USER', 'root'),
             'password' => env_config('DB_PASSWORD', ''),
             'charset' => 'utf8mb4',

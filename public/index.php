@@ -75,6 +75,7 @@ $cachePath = $basePath . '/cache';  // Pasta de cache
 // 4. Container de Dependências (PHP-DI)
 // ===========================================
 use App\Core\Application;
+use App\Core\DatabaseCapsule;
 use DI\ContainerBuilder;
 
 $containerBuilder = new ContainerBuilder();
@@ -88,6 +89,9 @@ if ($env === 'production') {
 // Carrega definições do container (services, factories, etc.)
 $definitions = require $configPath . '/container.php';
 $container = $containerBuilder->addDefinitions($definitions)->build();
+
+// Inicializa o DatabaseCapsule (Eloquent) antes de qualquer requisição
+$container->get(DatabaseCapsule::class);
 
 // ===========================================
 // 5. Inicialização da Aplicação

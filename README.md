@@ -107,7 +107,7 @@ O projeto possui cobertura de testes cobrindo CRUD de usuários e processos de a
 
 ./vendor/bin/phpunit
 
-As configurações de teste já utilizam um banco de dados em memória (sqlite:memory) para garantir isolamento e rapidez, conforme definido no phpunit.xml.
+As configurações de teste já utilizam um banco de dados em MariaDB (ou MySQL) para garantir uma representação mais fiel ao ambiente de produção. Certifique-se de ter um banco de dados `parrot_test` criado e configurado no seu arquivo `phpunit.xml`.
 
 ## **🌍 Deploy em Produção**
 

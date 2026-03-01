@@ -21,9 +21,11 @@ $senhaHash = password_hash('admin123', PASSWORD_BCRYPT);
 // Insere o usuário admin
 $stmt = $pdo->prepare("
     INSERT INTO usuarios (nome, email, senha, tipo, created_at, updated_at)
-    VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, NOW(), NOW())
 ");
 
 $stmt->execute(['Administrador', 'admin@parrot.com', $senhaHash, 'admin']);
 
-echo "Usuário admin criado: admin@parrot.com / admin123\n";
+if (php_sapi_name() === 'cli' && getenv('APP_ENV') !== 'testing') {
+    echo "Usuário admin criado: admin@parrot.com / admin123\n";
+}

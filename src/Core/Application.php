@@ -344,6 +344,8 @@ class Application implements RequestHandlerInterface
         // Define o código de status HTTP (200, 404, 500, etc.)
         http_response_code($response->getStatusCode());
 
+        header_remove('X-Powered-By');
+
         // Envia todos os headers um por um
         // O segundo parâmetro 'false' permite headers com o mesmo nome
         foreach ($response->getHeaders() as $name => $values) {

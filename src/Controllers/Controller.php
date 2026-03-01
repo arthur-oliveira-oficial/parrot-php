@@ -251,6 +251,8 @@ abstract class Controller
                 // Exige: Mínimo 8 caracteres, 1 maiúscula, 1 minúscula e 1 número
                 if (strlen($senha) < 8 || !preg_match('/[A-Z]/', $senha) || !preg_match('/[a-z]/', $senha) || !preg_match('/[0-9]/', $senha)) {
                     $errors[$field] = "O campo {$field} deve ter pelo menos 8 caracteres, contendo letras maiúsculas, minúsculas e números.";
+                } elseif (strlen($senha) > 128) {
+                    $errors[$field] = "O campo {$field} deve ter no máximo 128 caracteres";
                 }
             }
 

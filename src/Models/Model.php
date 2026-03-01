@@ -102,6 +102,9 @@ abstract class Model
 
     public function where(string $column, mixed $value): array
     {
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $column)) {
+            throw new \InvalidArgumentException("Invalid column name: {$column}");
+        }
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE {$column} = ?");
         $stmt->execute([$value]);
         return $stmt->fetchAll();
@@ -115,6 +118,11 @@ abstract class Model
 
     public function create(array $data): int
     {
+        foreach (array_keys($data) as $column) {
+            if (!preg_match('/^[a-zA-Z0-9_]+$/', $column)) {
+                throw new \InvalidArgumentException("Invalid column name: {$column}");
+            }
+        }
         $columns = implode(', ', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
 
@@ -129,6 +137,12 @@ abstract class Model
     {
         if (empty($data)) {
             return false;
+        }
+
+        foreach (array_keys($data) as $column) {
+            if (!preg_match('/^[a-zA-Z0-9_]+$/', $column)) {
+                throw new \InvalidArgumentException("Invalid column name: {$column}");
+            }
         }
 
         $sets = implode(', ', array_map(

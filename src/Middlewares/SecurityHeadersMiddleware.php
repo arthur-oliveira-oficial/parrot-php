@@ -58,9 +58,11 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
             ->withHeader(
                 'Content-Security-Policy',
                 // Permite scripts/estilos locais, imagens em base64 (data:) e recursos externos básicos
-                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;"
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-ancestors 'none';"
             )
+            ->withHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+            ->withHeader('Cache-Control', 'no-store, max-age=0')
             ->withHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
-            ->withHeader('X-Powered-By', '');
+            ->withoutHeader('X-Powered-By');
     }
 }

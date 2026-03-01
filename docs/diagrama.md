@@ -290,84 +290,134 @@ Este diagrama apresenta a organização completa dos diretórios e arquivos do f
 
 ```mermaid
 graph TD
-    ROOT["parrot-php/"]
-    
-    CONFIG["config/"]
-    CONFIG <|-- CONTAINER["container.php"]
-    CONFIG <|-- MIDDLEWARES["middlewares.php"]
-    CONFIG <|-- ROUTES["routes.php"]
-    
-    PUBLIC["public/"]
-    PUBLIC <|-- INDEX["index.php"]
-    
-    SRC["src/"]
-    
-    SRC <|-- CORE["Core/"]
-    CORE <|-- APP["Application.php"]
-    CORE <|-- REQUEST["Request.php"]
-    CORE <|-- RESPONSE["Response.php"]
-    CORE <|-- ROUTER["Router.php"]
-    CORE <|-- FASTROUTER["FastRouteRouter.php"]
-    CORE <|-- DBCAPS["DatabaseCapsule.php"]
-    CORE <|-- MIDQ["MiddlewareQueue.php"]
-    
-    SRC <|-- CONTROLLERS["Controllers/"]
-    CONTROLLERS <|-- BASEC["Controller.php"]
-    CONTROLLERS <|-- AUTH["AuthController.php"]
-    CONTROLLERS <|-- USER["UserController.php"]
-    
-    SRC <|-- MODELS["Models/"]
-    MODELS <|-- MODEL["Model.php"]
-    MODELS <|-- ELOQ["EloquentModel.php"]
-    MODELS <|-- USERM["UserModel.php"]
-    MODELS <|-- TKREV["TokenRevogado.php"]
-    
-    SRC <|-- MIDDLEWARES["Middlewares/"]
-    MIDDLEWARES <|-- ERR["ErrorHandlerMiddleware.php"]
-    MIDDLEWARES <|-- CORS["CorsMiddleware.php"]
-    MIDDLEWARES <|-- JWT["JwtAuthMiddleware.php"]
-    MIDDLEWARES <|-- RATE["RateLimitMiddleware.php"]
-    MIDDLEWARES <|-- SEC["SecurityHeadersMiddleware.php"]
-    
-    SRC <|-- EXCEPTIONS["Exceptions/"]
-    EXCEPTIONS <|-- HTTP["HttpException.php"]
-    EXCEPTIONS <|-- BAD["BadRequestException.php"]
-    EXCEPTIONS <|-- UNAUTH["UnauthorizedException.php"]
-    EXCEPTIONS <|-- NOTFOUND["NotFoundException.php"]
-    EXCEPTIONS <|-- FORBIDDEN["ForbiddenException.php"]
-    EXCEPTIONS <|-- METHOD["MethodNotAllowedException.php"]
-    
-    SRC <|-- VIEWS["Views/"]
-    VIEWS <|-- RES["Resource.php"]
-    VIEWS <|-- URES["UserResource.php"]
-    
-    DATABASE["database/"]
-    DATABASE <|-- MIGRATIONS["migrations/"]
-    DATABASE <|-- SEED["seed/"]
-    DATABASE <|-- SCRIPTS["scripts/"]
-    
-    TESTS["tests/"]
-    TESTS <|-- BOOTSTRAP["bootstrap.php"]
-    TESTS <|-- TESTCASE["TestCase.php"]
-    TESTS <|-- AUTHTEST["AuthTest.php"]
-    TESTS <|-- USERCRUD["UserCrudTest.php"]
-    
-    DOCS["docs/"]
-    DOCS <|-- INSTALACAO["instalacao.md"]
-    
-    style ROOT fill:#f5f5f5,stroke:#333
-    style CONFIG fill:#fff3e0,stroke:#f57c00
-    style PUBLIC fill:#e3f2fd,stroke:#1976d2
-    style SRC fill:#fff8e1,stroke:#ffc107
-    style CORE fill:#e8f5e9,stroke:#388e3c
-    style CONTROLLERS fill:#e8f5e9,stroke:#388e3c
-    style MODELS fill:#e8f5e9,stroke:#388e3c
-    style MIDDLEWARES fill:#f3e5f5,stroke:#7b1fa2
-    style EXCEPTIONS fill:#ffebee,stroke:#d32f2f
-    style VIEWS fill:#e0f2f1,stroke:#00796b
-    style DATABASE fill:#e0f7fa,stroke:#0097a7
-    style TESTS fill:#fce4ec,stroke:#c2185b
-    style DOCS fill:#e8eaf6,stroke:#3f51b5
+    ROOT("parrot-php/")
+
+    CONFIG("config/")
+    CONTAINER("container.php")
+    MIDDLEWARES("middlewares.php")
+    ROUTES("routes.php")
+
+    PUBLIC("public/")
+    INDEX("index.php")
+
+    SRC("src/")
+
+    CORE("Core/")
+    APP("Application.php")
+    REQUEST("Request.php")
+    RESPONSE("Response.php")
+    ROUTER("Router.php")
+    FASTROUTER("FastRouteRouter.php")
+    DBCAPS("DatabaseCapsule.php")
+    MIDQ("MiddlewareQueue.php")
+
+    CONTROLLERS("Controllers/")
+    BASEC("Controller.php")
+    AUTH("AuthController.php")
+    USER("UserController.php")
+
+    MODELS("Models/")
+    MODEL("Model.php")
+    ELOQ("EloquentModel.php")
+    USERM("UserModel.php")
+    TKREV("TokenRevogado.php")
+
+    MIDDLEWARES("Middlewares/")
+    ERR("ErrorHandlerMiddleware.php")
+    CORS("CorsMiddleware.php")
+    JWT("JwtAuthMiddleware.php")
+    RATE("RateLimitMiddleware.php")
+    SEC("SecurityHeadersMiddleware.php")
+
+    EXCEPTIONS("Exceptions/")
+    HTTP("HttpException.php")
+    BAD("BadRequestException.php")
+    UNAUTH("UnauthorizedException.php")
+    NOTFOUND("NotFoundException.php")
+    FORBIDDEN("ForbiddenException.php")
+    METHOD("MethodNotAllowedException.php")
+
+    VIEWS("Views/")
+    RES("Resource.php")
+    URES("UserResource.php")
+
+    DATABASE("database/")
+    MIGRATIONS("migrations/")
+    SEED("seed/")
+    SCRIPTS("scripts/")
+
+    TESTS("tests/")
+    BOOTSTRAP("bootstrap.php")
+    TESTCASE("TestCase.php")
+    AUTHTEST("AuthTest.php")
+    USERCRUD("UserCrudTest.php")
+
+    DOCS("docs/")
+    INSTALACAO("instalacao.md")
+
+    ROOT --> CONFIG
+    ROOT --> PUBLIC
+    ROOT --> SRC
+    ROOT --> DATABASE
+    ROOT --> TESTS
+    ROOT --> DOCS
+
+    CONFIG --> CONTAINER
+    CONFIG --> MIDDLEWARES
+    CONFIG --> ROUTES
+
+    PUBLIC --> INDEX
+
+    SRC --> CORE
+    SRC --> CONTROLLERS
+    SRC --> MODELS
+    SRC --> MIDDLEWARES
+    SRC --> EXCEPTIONS
+    SRC --> VIEWS
+
+    CORE --> APP
+    CORE --> REQUEST
+    CORE --> RESPONSE
+    CORE --> ROUTER
+    CORE --> FASTROUTER
+    CORE --> DBCAPS
+    CORE --> MIDQ
+
+    CONTROLLERS --> BASEC
+    CONTROLLERS --> AUTH
+    CONTROLLERS --> USER
+
+    MODELS --> MODEL
+    MODELS --> ELOQ
+    MODELS --> USERM
+    MODELS --> TKREV
+
+    MIDDLEWARES --> ERR
+    MIDDLEWARES --> CORS
+    MIDDLEWARES --> JWT
+    MIDDLEWARES --> RATE
+    MIDDLEWARES --> SEC
+
+    EXCEPTIONS --> HTTP
+    EXCEPTIONS --> BAD
+    EXCEPTIONS --> UNAUTH
+    EXCEPTIONS --> NOTFOUND
+    EXCEPTIONS --> FORBIDDEN
+    EXCEPTIONS --> METHOD
+
+    VIEWS --> RES
+    VIEWS --> URES
+
+    DATABASE --> MIGRATIONS
+    DATABASE --> SEED
+    DATABASE --> SCRIPTS
+
+    TESTS --> BOOTSTRAP
+    TESTS --> TESTCASE
+    TESTS --> AUTHTEST
+    TESTS --> USERCRUD
+
+    DOCS --> INSTALACAO
 ```
 
 ---

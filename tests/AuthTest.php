@@ -103,4 +103,49 @@ class AuthTest extends TestCase
 
         $this->assertEquals(401, $response->getStatusCode());
     }
+
+    public function testRateLimitingPorUsuarioNaMesmaRede(): void
+    {
+        // Limpar storage de rate limit antes do teste
+        \App\Middlewares\RateLimitMiddleware::clearStorage();
+
+        // Configuração de ambiente para simular IP de rede (100.100.100.100)
+        $serverParams = ['REMOTE_ADDR' => '100.100.100.100'];
+
+        // Token do Admin (ID: 1)
+        $tokenAdmin = $this->getJwtToken('admin@parrot.com', 'admin123');
+
+        // Criar um usuário 2 para o teste
+        $this->call('POST', '/api/usuarios', [
+            'nome' => 'Usuario Teste 2',
+            'email' => 'user2@parrot.com',
+            'senha' => 'senha123',
+            'senha_confirmacao' => 'senha123'
+        ], [], $tokenAdmin);
+
+        $tokenUser2 = $this->getJwtToken('user2@parrot.com', 'senha123');
+
+        // Fazer requisições como Admin até quase o limite (60 é o padrão, vamos fazer 59)
+        // Como o RateLimit login tem sua propria configuracao, usamos a rota /me para teste global
+        for ($i = 0; $i < 59; $i++) {
+            $response = $this->call('GET', '/api/auth/me', [], $serverParams, $tokenAdmin);
+            $this->assertEquals(200, $response->getStatusCode());
+        }
+
+        // A requisição 60 do Admin deve passar
+        $responseAdmin60 = $this->call('GET', '/api/auth/me', [], $serverParams, $tokenAdmin);
+        $this->assertEquals(200, $responseAdmin60->getStatusCode());
+
+        // A requisição 61 do Admin deve ser bloqueada (429)
+        $responseAdmin61 = $this->call('GET', '/api/auth/me', [], $serverParams, $tokenAdmin);
+        $this->assertEquals(429, $responseAdmin61->getStatusCode());
+
+        // AGORA O PULO DO GATO:
+        // O Usuario 2 está no mesmo IP ('100.100.100.100').
+        // Pelo comportamento antigo, ele já estaria bloqueado.
+        // Pelo novo comportamento (Rate Limit por User ID extraído do JWT), ele deve ter o próprio limite e passar.
+        $responseUser2 = $this->call('GET', '/api/auth/me', [], $serverParams, $tokenUser2);
+
+        $this->assertEquals(200, $responseUser2->getStatusCode());
+    }
 }

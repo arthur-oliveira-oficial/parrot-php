@@ -192,17 +192,70 @@ class RateLimitMiddleware implements MiddlewareInterface
     }
 
     /**
+     * Base64 Url Encode (usado para validar a assinatura do JWT)
+     */
+    private function base64UrlEncode(string $data): string
+    {
+        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+    }
+
+    /**
      * Obtém o identificador único para rate limiting
      *
-     * Seguranca: Por defeito, usa apenas REMOTE_ADDR.
-     * X-Forwarded-For e X-Real-IP apenas sao confiados se:
-     * 1. TRUSTED_PROXY_IPS estiver configurado
-     * 2. O REMOTE_ADDR estiver na lista de proxies confiaveis
+     * 1. Tenta obter o ID do usuário via cookie JWT. Se o usuário estiver autenticado
+     *    com um token JWT VÁLIDO (assinatura verificada), o rate limit é aplicado por usuário,
+     *    evitando que dispositivos em uma mesma rede corporativa bloqueiem uns aos outros.
+     * 2. Fallback: Por defeito, usa apenas REMOTE_ADDR.
+     *    X-Forwarded-For e X-Real-IP apenas sao confiados se:
+     *    a. TRUSTED_PROXY_IPS estiver configurado
+     *    b. O REMOTE_ADDR estiver na lista de proxies confiaveis
      *
-     * Isso previne ataques de IP spoofing.
+     * Isso previne ataques de IP spoofing, falso-positivos em redes NAT e Rate Limit Bypass via forged JWT.
      */
     private function getIdentifier(ServerRequestInterface $request): string
     {
+        // 1. Tentar obter o ID do usuário através do cookie JWT validado
+        $cookies = $request->getCookieParams();
+        $token = $cookies['token'] ?? null;
+
+        if ($token) {
+            $parts = explode('.', (string) $token);
+            if (count($parts) === 3) {
+                [$headerEncoded, $payloadEncoded, $signature] = $parts;
+
+                // Obter segredo do .env
+                $secret = $_ENV['JWT_SECRET'] ?? getenv('JWT_SECRET') ?: null;
+
+                if (!empty($secret)) {
+                    // Validar a assinatura para impedir Rate Limit Bypass
+                    $expectedSignature = $this->base64UrlEncode(
+                        hash_hmac('sha256', "{$headerEncoded}.{$payloadEncoded}", $secret, true)
+                    );
+
+                    if (hash_equals($expectedSignature, $signature)) {
+                        $remainder = strlen($payloadEncoded) % 4;
+                        if ($remainder) {
+                            $payloadEncoded .= str_repeat('=', 4 - $remainder);
+                        }
+
+                        $json = base64_decode(strtr($payloadEncoded, '-_', '+/'));
+                        if ($json !== false) {
+                            $payloadDecoded = json_decode($json, true);
+
+                            // Opcional: checar expiração
+                            $notExpired = !isset($payloadDecoded['exp']) || $payloadDecoded['exp'] >= time();
+
+                            if (is_array($payloadDecoded) && isset($payloadDecoded['sub']) && $notExpired) {
+                                // Retorna um identificador seguro baseado no ID do usuário validado
+                                return 'user:' . $payloadDecoded['sub'];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Fallback para IP
         $serverParams = $request->getServerParams();
         $remoteAddr = $serverParams['REMOTE_ADDR'] ?? 'unknown';
 

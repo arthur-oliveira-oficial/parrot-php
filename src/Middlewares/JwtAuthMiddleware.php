@@ -136,9 +136,13 @@ class JwtAuthMiddleware implements MiddlewareInterface
         }
 
         // Decodifica payload
-        $payload = json_decode($this->base64UrlDecode($payloadEncoded), true);
+        try {
+            $payload = json_decode($this->base64UrlDecode($payloadEncoded), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
 
-        if (!$payload) {
+        if (!is_array($payload)) {
             return null;
         }
 
@@ -158,7 +162,8 @@ class JwtAuthMiddleware implements MiddlewareInterface
             $data .= str_repeat('=', 4 - $remainder);
         }
 
-        return base64_decode(strtr($data, '-_', '+/'));
+        $decoded = base64_decode(strtr($data, '-_', '+/'), true);
+        return $decoded !== false ? $decoded : '';
     }
 
     private function base64UrlEncode(string $data): string

@@ -116,7 +116,11 @@ abstract class Controller
 
         if (str_contains($contentType, 'application/json')) {
             $body = (string) $request->getBody();
-            $data = json_decode($body, true);
+            try {
+                $data = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                return [];
+            }
 
             return is_array($data) ? $data : [];
         }

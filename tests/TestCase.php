@@ -43,6 +43,8 @@ abstract class TestCase extends PHPUnitTestCase
         // Factory PSR-17 para criar requests
         $this->psr17Factory = new Psr17Factory();
 
+        \App\Middlewares\RateLimitMiddleware::clearStorage();
+
         $this->resetDatabase();
     }
 
@@ -100,18 +102,21 @@ abstract class TestCase extends PHPUnitTestCase
         ?string $jwtToken = null
     ): ResponseInterface {
         // Cria URI
-        $uri = $this->psr17Factory->createUri($uri);
+        $psrUri = $this->psr17Factory->createUri($uri);
 
         // Cria headers
         $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
 
-        // Cria request PSR-7
-        $serverRequest = $this->psr17Factory->createServerRequest($method, $uri);
-
-        // Adiciona headers
-        foreach ($headers as $name => $value) {
-            $serverRequest = $serverRequest->withHeader($name, $value);
+        // Trata os ServerParams vindos do array associativo headers (no teste de RateLimit é passado SERVER_PARAMS lá)
+        // Isso é um hack porque o array headers nos testes às vezes é usado para injetar params de server como REMOTE_ADDR
+        $serverParams = $_SERVER;
+        if (isset($headers['REMOTE_ADDR'])) {
+            $serverParams['REMOTE_ADDR'] = $headers['REMOTE_ADDR'];
+            unset($headers['REMOTE_ADDR']);
         }
+
+        // Cria request PSR-7 (ServerRequest do Nyholm permite serverParams via factory do pacote, mas ServerRequestCreator também permite)
+        $serverRequest = new \Nyholm\Psr7\ServerRequest($method, $psrUri, $headers, null, '1.1', $serverParams);
 
         // Adiciona dados ao body
         if (!empty($data)) {

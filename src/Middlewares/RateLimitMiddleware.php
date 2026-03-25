@@ -238,9 +238,13 @@ class RateLimitMiddleware implements MiddlewareInterface
                             $payloadEncoded .= str_repeat('=', 4 - $remainder);
                         }
 
-                        $json = base64_decode(strtr($payloadEncoded, '-_', '+/'));
+                        $json = base64_decode(strtr($payloadEncoded, '-_', '+/'), true);
                         if ($json !== false) {
-                            $payloadDecoded = json_decode($json, true);
+                            try {
+                                $payloadDecoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+                            } catch (\JsonException) {
+                                $payloadDecoded = null;
+                            }
 
                             // Opcional: checar expiração
                             $notExpired = !isset($payloadDecoded['exp']) || $payloadDecoded['exp'] >= time();

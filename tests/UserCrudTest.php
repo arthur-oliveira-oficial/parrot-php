@@ -9,7 +9,7 @@ class UserCrudTest extends TestCase
     private int $adminUserId = 1;
     private ?int $normalUserId = null;
     private string $normalUserEmail = 'usuario@parrot.com';
-    private string $normalUserPassword = 'senha123';
+    private string $normalUserPassword = 'senhaForte123';
 
     protected function setUp(): void
     {
@@ -206,7 +206,7 @@ class UserCrudTest extends TestCase
         $createResponse = $this->call('POST', '/api/usuarios', [
             'nome' => 'Usuario para Deletar',
             'email' => $email,
-            'senha' => 'senha123'
+            'senha' => 'senhaForte123'
         ], [], $adminToken);
 
         $createBody = $this->getJsonBody($createResponse);

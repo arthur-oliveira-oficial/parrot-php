@@ -144,6 +144,19 @@ class UserCrudTest extends TestCase
         $this->assertEquals(422, $response->getStatusCode());
     }
 
+    public function testCriarUsuarioNaoAdmin(): void
+    {
+        $token = $this->getJwtToken($this->normalUserEmail, $this->normalUserPassword);
+
+        $response = $this->call('POST', '/api/usuarios', [
+            'nome' => 'Tentativa Indevida',
+            'email' => 'indevido@parrot.com',
+            'senha' => 'senhaForte123'
+        ], [], $token);
+
+        $this->assertEquals(403, $response->getStatusCode());
+    }
+
     public function testCriarUsuarioSemNome(): void
     {
         $adminToken = $this->getJwtToken('admin@parrot.com', 'admin123');

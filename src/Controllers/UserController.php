@@ -144,6 +144,10 @@ class UserController extends Controller
      */
     public function store(ServerRequestInterface $request): ResponseInterface
     {
+        if ($request->getAttribute('user_tipo') !== 'admin') {
+            return $this->forbidden('Apenas administradores podem criar utilizadores');
+        }
+
         $body = $this->getBody($request);
 
         $errors = $this->validate($body, [

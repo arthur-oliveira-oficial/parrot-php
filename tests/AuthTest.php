@@ -18,7 +18,7 @@ class AuthTest extends TestCase
 
         $body = $this->getJsonBody($response);
         $this->assertArrayHasKey('data', $body);
-        $this->assertArrayHasKey('token', $body);
+        $this->assertArrayNotHasKey('token', $body);
     }
 
     public function testLoginSenhaIncorreta(): void

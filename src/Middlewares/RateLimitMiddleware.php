@@ -246,10 +246,21 @@ class RateLimitMiddleware implements MiddlewareInterface
                                 $payloadDecoded = null;
                             }
 
-                            // Opcional: checar expiração
+                            $expectedIssuer = (string) ($_ENV['JWT_ISSUER'] ?? $_ENV['APP_URL'] ?? 'parrot-php');
+                            $expectedAudience = (string) ($_ENV['JWT_AUDIENCE'] ?? 'parrot-api');
                             $notExpired = !isset($payloadDecoded['exp']) || $payloadDecoded['exp'] >= time();
+                            $notBeforeReached = !isset($payloadDecoded['nbf']) || $payloadDecoded['nbf'] <= time();
+                            $issuerValid = ($payloadDecoded['iss'] ?? null) === $expectedIssuer;
+                            $audienceValid = ($payloadDecoded['aud'] ?? null) === $expectedAudience;
 
-                            if (is_array($payloadDecoded) && isset($payloadDecoded['sub']) && $notExpired) {
+                            if (
+                                is_array($payloadDecoded) &&
+                                isset($payloadDecoded['sub']) &&
+                                $notExpired &&
+                                $notBeforeReached &&
+                                $issuerValid &&
+                                $audienceValid
+                            ) {
                                 // Retorna um identificador seguro baseado no ID do usuário validado
                                 return 'user:' . $payloadDecoded['sub'];
                             }
@@ -324,7 +335,8 @@ class RateLimitMiddleware implements MiddlewareInterface
             return;
         }
 
-        apcu_inc($key, 1);
+        $record['count']++;
+        apcu_store($key, $record, max(1, ($record['reset'] - $now) + 60));
     }
 
     /**

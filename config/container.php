@@ -81,8 +81,10 @@ return [
         ],
 
         'jwt' => [
-            'secret' => env_config('JWT_SECRET', 'default-secret-change-me'),
+            'secret' => env_config('JWT_SECRET', ''),
             'expiry' => env_config('JWT_EXPIRY', 3600),
+            'issuer' => env_config('JWT_ISSUER', env_config('APP_URL', 'parrot-php')),
+            'audience' => env_config('JWT_AUDIENCE', 'parrot-api'),
         ],
         'cors' => [
             'allowed_origins' => explode(',', env_config('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')),

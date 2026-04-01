@@ -94,16 +94,14 @@ class UserResource extends Resource
      * Resposta de login bem-sucedido
      *
      * @param array $user Dados do usuário
-     * @param string $token JWT token
-     * @return ResponseInterface Resposta com token
+     * @return ResponseInterface Resposta de login
      */
-    public function loginSuccess(array $user, string $token): ResponseInterface
+    public function loginSuccess(array $user): ResponseInterface
     {
         $userData = $this->transform($user);
 
         return \App\Core\Response::json([
             'data' => $userData,
-            'token' => $token,
             'message' => 'Login realizado com sucesso',
         ]);
     }

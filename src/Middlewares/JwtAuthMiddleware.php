@@ -146,6 +146,21 @@ class JwtAuthMiddleware implements MiddlewareInterface
             return null;
         }
 
+        $expectedIssuer = (string) ($_ENV['JWT_ISSUER'] ?? $_ENV['APP_URL'] ?? 'parrot-php');
+        $expectedAudience = (string) ($_ENV['JWT_AUDIENCE'] ?? 'parrot-api');
+
+        if (($payload['iss'] ?? null) !== $expectedIssuer) {
+            return null;
+        }
+
+        if (($payload['aud'] ?? null) !== $expectedAudience) {
+            return null;
+        }
+
+        if (isset($payload['nbf']) && $payload['nbf'] > time()) {
+            return null;
+        }
+
         // Verifica expiração
         if (isset($payload['exp']) && $payload['exp'] < time()) {
             return null;

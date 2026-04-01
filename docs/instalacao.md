@@ -120,6 +120,13 @@ DB_PASSWORD=sua_senha
 
 # JWT (use uma chave forte!)
 JWT_SECRET=sua_chave_secreta_aqui
+JWT_ISSUER=http://localhost:8080
+JWT_AUDIENCE=parrot-api
+
+# Seed do administrador
+ADMIN_NAME=Administrador
+ADMIN_EMAIL=admin@seudominio.com
+ADMIN_PASSWORD=troque_esta_senha
 ```
 
 ---

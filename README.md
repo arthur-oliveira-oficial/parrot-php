@@ -129,12 +129,12 @@ parrot-php/
    ```
 
 4. **Prepare o Banco de Dados:**  
-   Execute as migrações para criar as tabelas e as seeds para criar o usuário administrador padrão.  
+   Execute as migrações para criar as tabelas e as seeds para criar o usuário administrador definido por `ADMIN_EMAIL` e `ADMIN_PASSWORD`.  
    ```bash
    php database/scripts/migrate.php  
    php database/scripts/seed.php
    ```
-   *(Nota: O usuário padrão criado pela seed geralmente é admin@admin.com)*  
+   *(Nota: a seed falha se `ADMIN_EMAIL` e `ADMIN_PASSWORD` não estiverem definidos.)*  
 
 5. **Inicie o Servidor de Desenvolvimento:**
    ```bash
@@ -148,7 +148,7 @@ Abaixo está um resumo das rotas disponíveis. Todas as respostas utilizam o pad
 
 ### **Autenticação**
 
-* `POST /api/auth/login` - Autentica um usuário e retorna o token JWT em um cookie HttpOnly.
+* `POST /api/auth/login` - Autentica um usuário e retorna o token JWT apenas em um cookie HttpOnly.
 * `POST /api/auth/logout` - Revoga a sessão de usuário.
 * `GET /api/auth/me` - Retorna as informações do usuário atual logado. (Requer JWT)
 
@@ -156,7 +156,7 @@ Abaixo está um resumo das rotas disponíveis. Todas as respostas utilizam o pad
 
 * `GET /api/usuarios` - Lista todos os usuários (Requer JWT).
 * `GET /api/usuarios/{id}` - Retorna os dados de um usuário específico (Requer JWT).
-* `POST /api/usuarios` - Cria um novo usuário (Requer JWT).
+* `POST /api/usuarios` - Cria um novo usuário (Requer JWT e perfil admin).
 * `PUT /api/usuarios/{id}` - Atualiza os dados de um usuário (Requer JWT).
 * `DELETE /api/usuarios/{id}` - Remove um usuário do sistema (Soft delete, Requer JWT).
 

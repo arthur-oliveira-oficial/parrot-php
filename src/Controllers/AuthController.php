@@ -91,7 +91,7 @@ class AuthController extends Controller
         $token = $this->gerarToken($usuario);
 
         // Prepara resposta de sucesso
-        $response = $this->resource->loginSuccess($usuario, $token);
+        $response = $this->resource->loginSuccess($usuario);
 
         // Define cookie HttpOnly com o token
         // HttpOnly: JavaScript não pode acessar (protege contra XSS)
@@ -255,7 +255,10 @@ class AuthController extends Controller
             throw new \RuntimeException('JWT_SECRET não configurado. Defina a variável JWT_SECRET no arquivo .env');
         }
 
-        $expiry = $_ENV['JWT_EXPIRY'] ?? 3600;
+        $expiry = (int) ($_ENV['JWT_EXPIRY'] ?? 3600);
+        $issuer = $this->getJwtIssuer();
+        $audience = $this->getJwtAudience();
+        $issuedAt = time();
 
         $header = [
             'typ' => 'JWT',
@@ -270,8 +273,11 @@ class AuthController extends Controller
             'email' => $usuario['email'],
             'tipo' => $usuario['tipo'],
             'jti' => $jti,
-            'iat' => time(),
-            'exp' => time() + $expiry,
+            'iss' => $issuer,
+            'aud' => $audience,
+            'iat' => $issuedAt,
+            'nbf' => $issuedAt,
+            'exp' => $issuedAt + $expiry,
         ];
 
         $headerEncoded = $this->base64UrlEncode(json_encode($header));
@@ -307,5 +313,15 @@ class AuthController extends Controller
     private function base64UrlEncode(string $data): string
     {
         return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+    }
+
+    private function getJwtIssuer(): string
+    {
+        return (string) ($_ENV['JWT_ISSUER'] ?? $_ENV['APP_URL'] ?? 'parrot-php');
+    }
+
+    private function getJwtAudience(): string
+    {
+        return (string) ($_ENV['JWT_AUDIENCE'] ?? 'parrot-api');
     }
 }

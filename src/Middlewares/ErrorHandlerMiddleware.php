@@ -109,6 +109,14 @@ class ErrorHandlerMiddleware implements MiddlewareInterface
                 'exception' => $e::class,
                 'trace' => $e->getTraceAsString(),
             ]);
+        } else {
+            error_log(sprintf(
+                '[%s] %s in %s:%d',
+                $e::class,
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine()
+            ));
         }
 
         $mensagem = $this->displayErrors

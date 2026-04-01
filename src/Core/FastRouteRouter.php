@@ -59,6 +59,9 @@ class FastRouteRouter implements RequestHandlerInterface
     /** @var string Caminho para o diretório de cache */
     private string $cachePath = '';
 
+    /** @var \FastRoute\Dispatcher|null Dispatcher compilado em memória para a instância atual */
+    private ?\FastRoute\Dispatcher $dispatcher = null;
+
     /**
      * Construtor do Router
      *
@@ -234,31 +237,8 @@ class FastRouteRouter implements RequestHandlerInterface
         $metodo = $request->getMethod();
         $caminho = $this->normalizarCaminho($request->getUri()->getPath());
 
-        // Em produção, usa cache do FastRoute para melhor performance
-        // Assume-se que o cache é válido e não há closures em rotas em produção
-        if ($this->env === 'production' && $this->cachePath !== '') {
-            // CacheDispatcher:.compila rotas uma vez e salva em arquivo
-            $dispatcher = \FastRoute\cachedDispatcher(function(\FastRoute\RouteCollector $r) {
-                foreach ($this->rotas as $chave => $dados) {
-                    [$metodoRota, $caminhoRota] = explode(' ', $chave, 2);
-                    $r->addRoute($metodoRota, $caminhoRota, $dados);
-                }
-            }, [
-                'cacheFile' => $this->cachePath . '/routes.php',
-                'cacheDisabled' => false,
-            ]);
-        } else {
-            // SimpleDispatcher:compila rotas a cada requisição (útil em desenvolvimento)
-            $dispatcher = \FastRoute\simpleDispatcher(function(\FastRoute\RouteCollector $r) {
-                foreach ($this->rotas as $chave => $dados) {
-                    [$metodoRota, $caminhoRota] = explode(' ', $chave, 2);
-                    $r->addRoute($metodoRota, $caminhoRota, $dados);
-                }
-            });
-        }
-
         // Dispara a rota: método HTTP + caminho
-        $routeInfo = $dispatcher->dispatch($metodo, $caminho);
+        $routeInfo = $this->getDispatcher()->dispatch($metodo, $caminho);
 
         // Analisa o resultado do dispatch
         switch ($routeInfo[0]) {
@@ -288,6 +268,42 @@ class FastRouteRouter implements RequestHandlerInterface
             default:
                 // Nenhuma rota encontrada para este caminho
                 return $this->criarRespostaErro('Rota não encontrada', 404);
+        }
+    }
+
+    private function getDispatcher(): \FastRoute\Dispatcher
+    {
+        if ($this->dispatcher !== null) {
+            return $this->dispatcher;
+        }
+
+        if ($this->env === 'production' && $this->cachePath !== '') {
+            if (!is_dir($this->cachePath)) {
+                mkdir($this->cachePath, 0775, true);
+            }
+
+            $this->dispatcher = \FastRoute\cachedDispatcher(function (RouteCollector $r): void {
+                $this->registrarRotasNoDispatcher($r);
+            }, [
+                'cacheFile' => $this->cachePath . '/routes.php',
+                'cacheDisabled' => false,
+            ]);
+
+            return $this->dispatcher;
+        }
+
+        $this->dispatcher = \FastRoute\simpleDispatcher(function (RouteCollector $r): void {
+            $this->registrarRotasNoDispatcher($r);
+        });
+
+        return $this->dispatcher;
+    }
+
+    private function registrarRotasNoDispatcher(RouteCollector $routeCollector): void
+    {
+        foreach ($this->rotas as $chave => $dados) {
+            [$metodoRota, $caminhoRota] = explode(' ', $chave, 2);
+            $routeCollector->addRoute($metodoRota, $caminhoRota, $dados);
         }
     }
 
@@ -323,14 +339,19 @@ class FastRouteRouter implements RequestHandlerInterface
      */
     private function dispatch(array $handler, ServerRequestInterface $request, ?string $middlewareRota = null): ResponseInterface
     {
-        // Se for uma closure (função anônima), executa diretamente
-        if (is_callable($handler)) {
-            return $handler($request);
-        }
-
         // Extrai o middleware da rota (pode estar no array ou como parâmetro)
         $middlewareRotaData = $handler['middleware'] ?? null;
         $callback = $handler['callback'];
+
+        if (is_callable($callback)) {
+            $resposta = $callback($request);
+
+            if (!$resposta instanceof ResponseInterface) {
+                throw new \RuntimeException('O handler da rota precisa retornar uma ResponseInterface.');
+            }
+
+            return $resposta;
+        }
 
         if ($middlewareRota === null && $middlewareRotaData !== null) {
             $middlewareRota = $middlewareRotaData;
@@ -440,17 +461,25 @@ class FastRouteControllerHandler implements RequestHandlerInterface
      */
     private function invocarMetodo(object $controller, ServerRequestInterface $request): ResponseInterface
     {
+        $resposta = null;
+
         if ($this->container !== null && class_exists(Invoker::class)) {
             if ($this->invoker === null) {
                 $this->invoker = new Invoker(null, $this->container);
             }
 
-            return $this->invoker->call([$controller, $this->metodo], [
+            $resposta = $this->invoker->call([$controller, $this->metodo], [
                 'request' => $request,
             ]);
+        } else {
+            $resposta = $controller->{$this->metodo}($request);
         }
 
-        return $controller->{$this->metodo}($request);
+        if (!$resposta instanceof ResponseInterface) {
+            throw new \RuntimeException('O controller precisa retornar uma ResponseInterface.');
+        }
+
+        return $resposta;
     }
 
     private function criarController(): object

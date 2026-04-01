@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Parrot PHP Framework - Application Core
  *
@@ -28,9 +30,6 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Laminas\Diactoros\ResponseFactory;
-use Laminas\Diactoros\StreamFactory;
-use Laminas\Diactoros\UploadedFileFactory;
 
 /**
  * Classe principal da aplicação (Facade do Framework)
@@ -355,6 +354,6 @@ class Application implements RequestHandlerInterface
         }
 
         // Envia o corpo da resposta (geralmente JSON)
-        echo $response->getBody();
+        echo (string) $response->getBody();
     }
 }

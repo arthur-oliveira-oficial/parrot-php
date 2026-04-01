@@ -80,6 +80,10 @@ class RateLimitMiddleware implements MiddlewareInterface
         ServerRequestInterface $request,
         RequestHandlerInterface $handler
     ): ResponseInterface {
+        if ($request->getMethod() === 'OPTIONS') {
+            return $handler->handle($request);
+        }
+
         $identifier = $this->getIdentifier($request);
         $counterKey = $this->getStorageKey($identifier);
         $requestCount = $this->store->increment($counterKey, $this->windowSeconds);

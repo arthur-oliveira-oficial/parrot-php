@@ -15,10 +15,22 @@ class AuthTest extends TestCase
 
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('token=', $response->getHeaderLine('Set-Cookie'));
+        $this->assertStringContainsString('HttpOnly', $response->getHeaderLine('Set-Cookie'));
+        $this->assertStringContainsString('SameSite=Strict', $response->getHeaderLine('Set-Cookie'));
 
         $body = $this->getJsonBody($response);
         $this->assertArrayHasKey('data', $body);
         $this->assertArrayNotHasKey('token', $body);
+    }
+
+    public function testLoginNormalizaEmail(): void
+    {
+        $response = $this->call('POST', '/api/auth/login', [
+            'email' => '  ADMIN@PARROT.COM  ',
+            'senha' => 'admin123'
+        ]);
+
+        $this->assertEquals(200, $response->getStatusCode());
     }
 
     public function testLoginSenhaIncorreta(): void
@@ -77,6 +89,7 @@ class AuthTest extends TestCase
         $response = $this->call('POST', '/api/auth/logout', [], [], $token);
 
         $this->assertEquals(200, $response->getStatusCode());
+        $this->assertStringContainsString('Max-Age=0', $response->getHeaderLine('Set-Cookie'));
 
         $body = $this->getJsonBody($response);
         $this->assertArrayHasKey('message', $body);

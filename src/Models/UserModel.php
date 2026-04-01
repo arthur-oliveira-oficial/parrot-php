@@ -10,7 +10,7 @@ declare(strict_types=1);
  * - Soft Deletes (exclusão lógica)
  * - Campos: id, nome, email, senha, tipo, created_at, updated_at, deletado_em
  * - Tipos de usuário: 'admin' e 'user'
- * - Hash de senha com bcrypt
+ * - Hash de senha com Argon2id
  *
  * @see EloquentModel
  * @see https://laravel.com/docs/eloquent Laravel Eloquent ORM
@@ -30,7 +30,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * - id: integer (PK)
  * - nome: string
  * - email: string (único)
- * - senha: string (hash bcrypt)
+ * - senha: string (hash Argon2id)
  * - tipo: enum ('admin', 'user')
  * - created_at: datetime
  * - updated_at: datetime
@@ -50,7 +50,7 @@ class UserModel extends EloquentModel
     protected $table = 'usuarios';
 
     /** @var array Campos que podem ser preenchidos em massa (mass assignment) */
-    protected $fillable = ['nome', 'email', 'senha'];
+    protected $fillable = ['nome', 'email', 'senha', 'tipo'];
 
     /** @var array Campos que não aparecem na serialização JSON */
     protected $hidden = ['senha'];
@@ -77,7 +77,7 @@ class UserModel extends EloquentModel
      * Este método é automaticamente chamado pelo Eloquent
      * quando o atributo 'senha' é definido.
      *
-     * Usa bcrypt com as opções padrão do PHP.
+     * Usa Argon2id conforme a diretriz de segurança do projeto.
      *
      * @param string $value Senha em texto plano
      */
@@ -259,7 +259,7 @@ class UserModel extends EloquentModel
 
         // Hash "falso" pré-calculado com Argon2id para simular o tempo de validação
         // Isso impede que atacantes meçam o tempo de resposta para descobrir emails válidos
-        $dummyHash = '$argon2id$v=19$m=65536,t=4,p=1$c29tZXNhbHRzdHJpbmc$G2yR/Xf3b2T0uQ2qO8tE0/g6oD0';
+        $dummyHash = '$argon2id$v=19$m=65536,t=4,p=1$ZHVtbXlfc2FsdF9wYXJyb3Q$YcrfBBfD6Y0N4H2M8QMLv0rmsHHq5AzwxouOg6vT3G4';
 
         if (!$usuario) {
             // Executa a verificação contra o hash falso apenas para gastar o mesmo tempo
@@ -270,6 +270,11 @@ class UserModel extends EloquentModel
         // Verifica senha com o hash real do banco de dados
         if (!password_verify($senha, $usuario->senha)) {
             return null;
+        }
+
+        if (password_needs_rehash($usuario->senha, PASSWORD_ARGON2ID)) {
+            $usuario->senha = $senha;
+            $usuario->save();
         }
 
         // Retorna dados do usuário (sem senha por causa de $hidden)

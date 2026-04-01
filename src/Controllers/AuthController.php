@@ -70,7 +70,7 @@ class AuthController extends Controller
     public function login(ServerRequestInterface $request): ResponseInterface
     {
         // Obtém dados do corpo da requisição
-        $body = $this->getBody($request);
+        $body = $this->normalizarEntradaLogin($this->getBody($request));
 
         // Valida campos obrigatórios
         $errors = $this->validate($body, [
@@ -99,13 +99,9 @@ class AuthController extends Controller
         // HttpOnly: JavaScript não pode acessar (protege contra XSS)
         // Secure: apenas HTTPS em produção
         // SameSite=Strict: previne CSRF
-        $expiry = time() + $this->jwtService->getExpiracaoEmSegundos();
-        $isProduction = ($_ENV['APP_ENV'] ?? 'development') === 'production';
-        $secureFlag = $isProduction ? 'Secure; ' : '';
-
         $response = $response->withHeader(
             'Set-Cookie',
-            "token={$token}; HttpOnly; {$secureFlag}SameSite=Strict; Path=/; Expires=" . gmdate('D, d M Y H:i:s', $expiry) . ' GMT'
+            $this->montarCookieToken($request, $token, $this->jwtService->getExpiracaoEmSegundos())
         );
 
         return $response;
@@ -137,12 +133,9 @@ class AuthController extends Controller
 
         $response = Response::json(['message' => 'Logout realizado com sucesso']);
 
-        $isProduction = ($_ENV['APP_ENV'] ?? 'development') === 'production';
-        $secureFlag = $isProduction ? 'Secure; ' : '';
-
         $response = $response->withHeader(
             'Set-Cookie',
-            "token=; HttpOnly; {$secureFlag}SameSite=Strict; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+            $this->montarCookieToken($request, '', 0)
         );
 
         return $response;
@@ -181,4 +174,46 @@ class AuthController extends Controller
         return $this->resource->item($usuario);
     }
 
+    private function normalizarEntradaLogin(array $dados): array
+    {
+        if (isset($dados['email']) && is_string($dados['email'])) {
+            $dados['email'] = mb_strtolower(trim($dados['email']));
+        }
+
+        return $dados;
+    }
+
+    private function montarCookieToken(ServerRequestInterface $request, string $token, int $maxAge): string
+    {
+        $expiraEm = $maxAge > 0 ? time() + $maxAge : 0;
+        $partes = [
+            'token=' . $token,
+            'Path=/',
+            'HttpOnly',
+            'SameSite=Strict',
+        ];
+
+        if ($this->deveUsarCookieSeguro($request)) {
+            $partes[] = 'Secure';
+        }
+
+        if ($maxAge > 0) {
+            $partes[] = 'Max-Age=' . $maxAge;
+            $partes[] = 'Expires=' . gmdate('D, d M Y H:i:s', $expiraEm) . ' GMT';
+        } else {
+            $partes[] = 'Max-Age=0';
+            $partes[] = 'Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        }
+
+        return implode('; ', $partes);
+    }
+
+    private function deveUsarCookieSeguro(ServerRequestInterface $request): bool
+    {
+        $protocoloEncaminhado = strtolower(trim($request->getHeaderLine('X-Forwarded-Proto')));
+        $schema = strtolower($request->getUri()->getScheme());
+        $ambiente = (string) ($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? getenv('APP_ENV') ?: 'development');
+
+        return $schema === 'https' || $protocoloEncaminhado === 'https' || $ambiente === 'production';
+    }
 }

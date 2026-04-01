@@ -96,7 +96,9 @@ class TokenRevogado extends EloquentModel
     public static function revogar(string $jti, int $expiryTimestamp): bool
     {
         try {
-            self::create([
+            self::updateOrCreate([
+                'jti' => $jti,
+            ], [
                 'jti' => $jti,
                 'revogado_em' => date('Y-m-d H:i:s'),
                 'expires_at' => date('Y-m-d H:i:s', $expiryTimestamp),
@@ -107,7 +109,7 @@ class TokenRevogado extends EloquentModel
             self::cacheStore()->set(self::getCacheKey($jti), true, $ttl);
 
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable) {
             return false;
         }
     }

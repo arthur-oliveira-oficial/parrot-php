@@ -191,24 +191,10 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class Model {
-        +table: string
-        +fillable: array
-        +hidden: array
-        +find(id)
-        +all()
-        +create(data)
-        +update(id, data)
-        +delete(id)
-        +where(column, value)
-    }
-
     class EloquentModel {
-        +connection: PDO
-        +query(sql, params)
-        +beginTransaction()
-        +commit()
-        +rollback()
+        +timestamps: bool
+        +hidden: array
+        +serializeDate(date)
     }
 
     class UserModel {
@@ -221,7 +207,6 @@ classDiagram
         +revogar(token)
     }
 
-    Model <|-- EloquentModel
     EloquentModel <|-- UserModel
     EloquentModel <|-- TokenRevogado
 ```
@@ -317,7 +302,6 @@ graph TD
     USER("UserController.php")
 
     MODELS("Models/")
-    MODEL("Model.php")
     ELOQ("EloquentModel.php")
     USERM("UserModel.php")
     TKREV("TokenRevogado.php")
@@ -431,7 +415,6 @@ graph TD
 | **DatabaseCapsule** | Gerenciador de conexão com banco de dados | `src/Core/DatabaseCapsule.php` |
 | **MiddlewareQueue** | Fila de execução de middlewares | `src/Core/MiddlewareQueue.php` |
 | **Controller** | Classe base para todos os controllers | `src/Controllers/Controller.php` |
-| **Model** | Classe base para modelos de dados | `src/Models/Model.php` |
 | **EloquentModel** | Implementação do padrão Active Record | `src/Models/EloquentModel.php` |
 | **HttpException** | Classe base para exceções HTTP | `src/Exceptions/HttpException.php` |
 | **Resource** | Classe base para transformação de dados | `src/Views/Resource.php` |

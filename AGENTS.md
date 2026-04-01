@@ -59,7 +59,6 @@ Domínio hoje implementado:
 ### Banco e persistência
 
 - O model ativo base é `src/Models/EloquentModel.php`.
-- `src/Models/Model.php` é um legado em PDO puro. Não use esse model como base para novos recursos.
 - Exceções limitadas: infraestrutura de teste e seed ainda usam PDO diretamente:
   - `tests/TestCase.php`
   - `database/seed/001_admin.php`

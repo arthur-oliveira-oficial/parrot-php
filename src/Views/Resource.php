@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Parrot PHP Framework - Base Resource
  *
@@ -19,7 +21,6 @@
 namespace App\Views;
 
 use App\Core\Response;
-use Nyholm\Psr7\Response as NyholmResponse;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -41,10 +42,12 @@ abstract class Resource
      */
     public function collection(array $items, string $key = 'data'): ResponseInterface
     {
+        $itemsTransformados = $this->transformCollection($items);
+
         return Response::json([
-            $key => $items,
+            $key => $itemsTransformados,
             'meta' => [
-                'total' => count($items),
+                'total' => count($itemsTransformados),
             ]
         ]);
     }
@@ -60,7 +63,7 @@ abstract class Resource
      */
     public function item(array $item, string $key = 'data'): ResponseInterface
     {
-        return Response::json([$key => $item]);
+        return Response::json([$key => $this->transform($item)]);
     }
 
     /**
@@ -164,5 +167,15 @@ abstract class Resource
     protected function transformCollection(array $items): array
     {
         return array_map(fn($item) => $this->transform($item), $items);
+    }
+
+    public function toArray(array $item): array
+    {
+        return $this->transform($item);
+    }
+
+    public function toCollectionArray(array $items): array
+    {
+        return $this->transformCollection($items);
     }
 }

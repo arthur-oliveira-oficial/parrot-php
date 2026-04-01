@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Parrot PHP Framework - Base Controller
  *
@@ -71,7 +73,9 @@ abstract class Controller
      */
     protected function getUserId(ServerRequestInterface $request): ?int
     {
-        return $request->getAttribute('user_id');
+        $userId = $request->getAttribute('user_id');
+
+        return is_int($userId) ? $userId : (is_numeric($userId) ? (int) $userId : null);
     }
 
     /**
@@ -126,6 +130,21 @@ abstract class Controller
         }
 
         return [];
+    }
+
+    protected function getPositiveIntParam(ServerRequestInterface $request, string $name): ?int
+    {
+        $valor = $this->getParam($request, $name);
+
+        if (is_int($valor) && $valor > 0) {
+            return $valor;
+        }
+
+        if (is_string($valor) && preg_match('/^[1-9][0-9]*$/', $valor) === 1) {
+            return (int) $valor;
+        }
+
+        return null;
     }
 
     /**

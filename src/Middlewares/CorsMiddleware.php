@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Parrot PHP Framework - CORS Middleware
  *
@@ -23,6 +25,7 @@
 
 namespace App\Middlewares;
 
+use App\Core\Response as AppResponse;
 use Nyholm\Psr7\Response;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -73,14 +76,12 @@ class CorsMiddleware implements MiddlewareInterface
 
         // Se a origem nao for permitida, verificar o ambiente
         if (!$this->isOriginAllowed($origin)) {
-            $env = getenv('APP_ENV');
+            $env = $_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? getenv('APP_ENV');
 
-            // Se APP_ENV nao esta definido ou e producao, bloquear
             if ($env === false || $env !== 'development') {
-                return new Response(403, [], json_encode(['error' => 'Origin not allowed']));
+                return AppResponse::forbidden('Origem não permitida');
             }
 
-            // Em desenvolvimento, continuar sem headers CORS (nao bloquear)
             return $handler->handle($request);
         }
 
@@ -94,6 +95,7 @@ class CorsMiddleware implements MiddlewareInterface
         $allowCredentials = $this->isOriginWhitelisted($origin) ? 'true' : 'false';
 
         return $response
+            ->withHeader('Vary', 'Origin')
             ->withHeader('Access-Control-Allow-Origin', $origin)
             ->withHeader('Access-Control-Allow-Credentials', $allowCredentials)
             ->withHeader('Access-Control-Allow-Methods', implode(', ', $this->allowedMethods))
@@ -116,7 +118,7 @@ class CorsMiddleware implements MiddlewareInterface
         }
 
         // Verificacao explícita - nao usar fallback automático
-        $env = getenv('APP_ENV');
+        $env = $_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? getenv('APP_ENV');
 
         if ($env === false) {
             // Variavel nao definida - recusar por seguranca
@@ -148,6 +150,7 @@ class CorsMiddleware implements MiddlewareInterface
         $allowCredentials = $this->isOriginWhitelisted($origin) ? 'true' : 'false';
 
         return new Response(204, [
+            'Vary' => 'Origin',
             'Access-Control-Allow-Origin' => $origin,
             'Access-Control-Allow-Methods' => implode(', ', $this->allowedMethods),
             'Access-Control-Allow-Headers' => implode(', ', $this->allowedHeaders),

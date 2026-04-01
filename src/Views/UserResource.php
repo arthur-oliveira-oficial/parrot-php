@@ -66,31 +66,6 @@ class UserResource extends Resource
     }
 
     /**
-     * Retorna coleção de usuários
-     *
-     * Sobrescreve para aplicar transform() em cada item.
-     */
-    public function collection(array $items, string $key = 'data'): ResponseInterface
-    {
-        $transformedItems = array_map(
-            fn($item) => $this->transform($item),
-            $items
-        );
-
-        return parent::collection($transformedItems, $key);
-    }
-
-    /**
-     * Retorna um usuário
-     *
-     * Sobrescreve para aplicar transform().
-     */
-    public function item(array $item, string $key = 'data'): ResponseInterface
-    {
-        return parent::item($this->transform($item), $key);
-    }
-
-    /**
      * Resposta de login bem-sucedido
      *
      * @param array $user Dados do usuário

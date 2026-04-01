@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Parrot PHP Framework - Rate Limit Middleware
  *
@@ -21,7 +23,9 @@ namespace App\Middlewares;
 
 use App\Cache\ArrayKeyValueStore;
 use App\Cache\KeyValueStoreInterface;
-use Nyholm\Psr7\Response;
+use App\Core\JwtService;
+use App\Core\Response as AppResponse;
+use App\Models\TokenRevogado;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -55,6 +59,8 @@ class RateLimitMiddleware implements MiddlewareInterface
      */
     public function __construct(
         private readonly KeyValueStoreInterface $store,
+        private readonly JwtService $jwtService,
+        private readonly array $ipsProxyConfiavel = [],
         int $maxRequests = 60,
         int $windowSeconds = 60
     ) {
@@ -81,14 +87,10 @@ class RateLimitMiddleware implements MiddlewareInterface
         $remaining = max(0, $this->maxRequests - $requestCount);
 
         if ($requestCount > $this->maxRequests) {
-            return new Response(429, [
-                'Content-Type' => 'application/json',
-                'Retry-After' => (string) $ttl,
-            ], json_encode([
-                'error' => 'Too Many Requests',
-                'message' => 'Limite de requisições excedido. Tente novamente mais tarde.',
-                'retry_after' => $ttl,
-            ], JSON_UNESCAPED_UNICODE));
+            return AppResponse::tooManyRequests('Limite de requisições excedido. Tente novamente mais tarde.', $ttl)
+                ->withHeader('X-RateLimit-Limit', (string) $this->maxRequests)
+                ->withHeader('X-RateLimit-Remaining', '0')
+                ->withHeader('X-RateLimit-Reset', (string) (time() + $ttl));
         }
 
         $response = $handler->handle($request);
@@ -97,14 +99,6 @@ class RateLimitMiddleware implements MiddlewareInterface
             ->withHeader('X-RateLimit-Limit', (string) $this->maxRequests)
             ->withHeader('X-RateLimit-Remaining', (string) $remaining)
             ->withHeader('X-RateLimit-Reset', (string) (time() + $ttl));
-    }
-
-    /**
-     * Base64 Url Encode (usado para validar a assinatura do JWT)
-     */
-    private function base64UrlEncode(string $data): string
-    {
-        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
     }
 
     /**
@@ -122,95 +116,46 @@ class RateLimitMiddleware implements MiddlewareInterface
      */
     private function getIdentifier(ServerRequestInterface $request): string
     {
-        // 1. Tentar obter o ID do usuário através do cookie JWT validado
         $cookies = $request->getCookieParams();
         $token = $cookies['token'] ?? null;
 
-        if ($token) {
-            $parts = explode('.', (string) $token);
-            if (count($parts) === 3) {
-                [$headerEncoded, $payloadEncoded, $signature] = $parts;
+        if (is_string($token)) {
+            $payload = $this->jwtService->validarToken($token);
 
-                // Obter segredo do .env
-                $secret = $_ENV['JWT_SECRET'] ?? getenv('JWT_SECRET') ?: null;
-
-                if (!empty($secret)) {
-                    // Validar a assinatura para impedir Rate Limit Bypass
-                    $expectedSignature = $this->base64UrlEncode(
-                        hash_hmac('sha256', "{$headerEncoded}.{$payloadEncoded}", $secret, true)
-                    );
-
-                    if (hash_equals($expectedSignature, $signature)) {
-                        $remainder = strlen($payloadEncoded) % 4;
-                        if ($remainder) {
-                            $payloadEncoded .= str_repeat('=', 4 - $remainder);
-                        }
-
-                        $json = base64_decode(strtr($payloadEncoded, '-_', '+/'), true);
-                        if ($json !== false) {
-                            try {
-                                $payloadDecoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-                            } catch (\JsonException) {
-                                $payloadDecoded = null;
-                            }
-
-                            $expectedIssuer = (string) ($_ENV['JWT_ISSUER'] ?? $_ENV['APP_URL'] ?? 'parrot-php');
-                            $expectedAudience = (string) ($_ENV['JWT_AUDIENCE'] ?? 'parrot-api');
-                            $notExpired = !isset($payloadDecoded['exp']) || $payloadDecoded['exp'] >= time();
-                            $notBeforeReached = !isset($payloadDecoded['nbf']) || $payloadDecoded['nbf'] <= time();
-                            $issuerValid = ($payloadDecoded['iss'] ?? null) === $expectedIssuer;
-                            $audienceValid = ($payloadDecoded['aud'] ?? null) === $expectedAudience;
-
-                            if (
-                                is_array($payloadDecoded) &&
-                                isset($payloadDecoded['sub']) &&
-                                $notExpired &&
-                                $notBeforeReached &&
-                                $issuerValid &&
-                                $audienceValid
-                            ) {
-                                // Retorna um identificador seguro baseado no ID do usuário validado
-                                return 'user:' . $payloadDecoded['sub'];
-                            }
-                        }
-                    }
-                }
+            if (
+                is_array($payload) &&
+                isset($payload['sub']) &&
+                (!isset($payload['jti']) || !TokenRevogado::estaRevogado((string) $payload['jti']))
+            ) {
+                return 'user:' . (string) $payload['sub'];
             }
         }
 
-        // 2. Fallback para IP
         $serverParams = $request->getServerParams();
-        $remoteAddr = $serverParams['REMOTE_ADDR'] ?? 'unknown';
+        $remoteAddr = is_string($serverParams['REMOTE_ADDR'] ?? null) ? $serverParams['REMOTE_ADDR'] : 'unknown';
 
-        // Verificar se há proxy confiável configurado
-        $trustedProxies = getenv('TRUSTED_PROXY_IPS') ?: '';
+        if ($this->ipEhConfiavel($remoteAddr)) {
+            $cfIp = trim($request->getHeaderLine('CF-Connecting-IP'));
+            if ($cfIp !== '' && filter_var($cfIp, FILTER_VALIDATE_IP)) {
+                return $cfIp;
+            }
 
-        if (!empty($trustedProxies)) {
-            $trustedList = array_map('trim', explode(',', $trustedProxies));
-
-            // Se o IP de origem é um proxy confiável, usar X-Forwarded-For
-            if (in_array($remoteAddr, $trustedList, true)) {
-                // Primeiro, verificar Cloudflare (mais seguro)
-                $cfIp = $request->getHeaderLine('CF-Connecting-IP');
-                if (!empty($cfIp) && filter_var(trim($cfIp), FILTER_VALIDATE_IP)) {
-                    return trim($cfIp);
-                }
-
-                // Fallback para X-Forwarded-For - pega o ÚLTIMO IP da cadeia
-                // pois foi adicionado pelo proxy confiável no momento da conexão
-                $forwardedFor = $request->getHeaderLine('X-Forwarded-For');
-                if (!empty($forwardedFor)) {
-                    $ips = array_map('trim', explode(',', $forwardedFor));
-                    $lastIp = end($ips);
-                    if (filter_var($lastIp, FILTER_VALIDATE_IP)) {
-                        return $lastIp;
+            $forwardedFor = $request->getHeaderLine('X-Forwarded-For');
+            if ($forwardedFor !== '') {
+                foreach (array_map('trim', explode(',', $forwardedFor)) as $ipInformado) {
+                    if (filter_var($ipInformado, FILTER_VALIDATE_IP)) {
+                        return $ipInformado;
                     }
                 }
             }
         }
 
-        // Por defeito, usar apenas REMOTE_ADDR (seguro contra spoofing)
         return $remoteAddr;
+    }
+
+    private function ipEhConfiavel(string $ip): bool
+    {
+        return $ip !== '' && in_array($ip, $this->ipsProxyConfiavel, true);
     }
 
     public static function clearStorage(): void

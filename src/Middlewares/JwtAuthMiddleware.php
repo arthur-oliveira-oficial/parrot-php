@@ -24,6 +24,7 @@ declare(strict_types=1);
 
 namespace App\Middlewares;
 
+use App\Core\JwtService;
 use App\Core\Response;
 use App\Models\TokenRevogado;
 use Psr\Http\Message\ResponseInterface;
@@ -39,6 +40,11 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class JwtAuthMiddleware implements MiddlewareInterface
 {
+    public function __construct(
+        private readonly JwtService $jwtService
+    ) {
+    }
+
     /**
      * Processa a requisição validando o token JWT
      *
@@ -62,7 +68,7 @@ class JwtAuthMiddleware implements MiddlewareInterface
             return Response::unauthorized('Token de autenticação não fornecido');
         }
 
-        $payload = $this->validarToken($token);
+        $payload = $this->jwtService->validarToken($token);
 
         if (!$payload) {
             return Response::unauthorized('Token de autenticação inválido ou expirado');
@@ -76,6 +82,7 @@ class JwtAuthMiddleware implements MiddlewareInterface
         $request = $request->withAttribute('user_id', (int) $payload['sub']);
         $request = $request->withAttribute('user_email', $payload['email'] ?? '');
         $request = $request->withAttribute('user_tipo', $payload['tipo'] ?? '');
+        $request = $request->withAttribute('jwt_payload', $payload);
 
         return $handler->handle($request);
     }
@@ -92,97 +99,7 @@ class JwtAuthMiddleware implements MiddlewareInterface
      */
     private function obterToken(ServerRequestInterface $request): ?string
     {
-        // Lê exclusivamente do cookie HttpOnly (protegido contra XSS)
         $cookies = $request->getCookieParams();
-        return $cookies['token'] ?? null;
-    }
-
-    /**
-     * Valida o token JWT
-     *
-     * Validações realizadas:
-     * 1. Estrutura (3 partes separadas por ponto)
-     * 2. Assinatura HMAC-SHA256
-     * 3. Expiração (exp claim)
-     *
-     * @param string $token Token JWT
-     * @return array|null Payload do token ou null se inválido
-     */
-    private function validarToken(string $token): ?array
-    {
-        // JWT tem 3 partes: header.payload.signature
-        $parts = explode('.', $token);
-
-        if (count($parts) !== 3) {
-            return null;
-        }
-
-        [$headerEncoded, $payloadEncoded, $signature] = $parts;
-
-        // Obtém segredo do .env
-        $secret = $_ENV['JWT_SECRET'] ?? null;
-        if (empty($secret)) {
-            throw new \RuntimeException('JWT_SECRET não configurado. Defina a variável JWT_SECRET no arquivo .env');
-        }
-
-        // Calcula assinatura esperada
-        $expectedSignature = $this->base64UrlEncode(
-            hash_hmac('sha256', "{$headerEncoded}.{$payloadEncoded}", $secret, true)
-        );
-
-        // Compara assinaturas (timing attack safe)
-        if (!hash_equals($expectedSignature, $signature)) {
-            return null;
-        }
-
-        // Decodifica payload
-        try {
-            $payload = json_decode($this->base64UrlDecode($payloadEncoded), true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            return null;
-        }
-
-        if (!is_array($payload)) {
-            return null;
-        }
-
-        $expectedIssuer = (string) ($_ENV['JWT_ISSUER'] ?? $_ENV['APP_URL'] ?? 'parrot-php');
-        $expectedAudience = (string) ($_ENV['JWT_AUDIENCE'] ?? 'parrot-api');
-
-        if (($payload['iss'] ?? null) !== $expectedIssuer) {
-            return null;
-        }
-
-        if (($payload['aud'] ?? null) !== $expectedAudience) {
-            return null;
-        }
-
-        if (isset($payload['nbf']) && $payload['nbf'] > time()) {
-            return null;
-        }
-
-        // Verifica expiração
-        if (isset($payload['exp']) && $payload['exp'] < time()) {
-            return null;
-        }
-
-        return $payload;
-    }
-
-    private function base64UrlDecode(string $data): string
-    {
-        $remainder = strlen($data) % 4;
-
-        if ($remainder) {
-            $data .= str_repeat('=', 4 - $remainder);
-        }
-
-        $decoded = base64_decode(strtr($data, '-_', '+/'), true);
-        return $decoded !== false ? $decoded : '';
-    }
-
-    private function base64UrlEncode(string $data): string
-    {
-        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+        return is_string($cookies['token'] ?? null) ? $cookies['token'] : null;
     }
 }

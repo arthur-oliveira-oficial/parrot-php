@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Parrot PHP Framework - Response Helper
  *
@@ -58,7 +60,7 @@ class Response
         return new PsrResponse(
             $statusCode,
             $headers,
-            json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)
         );
     }
 

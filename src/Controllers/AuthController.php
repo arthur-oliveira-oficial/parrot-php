@@ -20,6 +20,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\JwtService;
 use App\Core\Response;
 use App\Models\UserModel;
 use App\Models\TokenRevogado;
@@ -47,7 +48,8 @@ class AuthController extends Controller
      */
     public function __construct(
         protected UserModel $model,
-        protected UserResource $resource
+        protected UserResource $resource,
+        private readonly JwtService $jwtService
     ) {
     }
 
@@ -88,7 +90,7 @@ class AuthController extends Controller
         }
 
         // Gera token JWT com dados do usuário
-        $token = $this->gerarToken($usuario);
+        $token = $this->jwtService->gerarToken($usuario);
 
         // Prepara resposta de sucesso
         $response = $this->resource->loginSuccess($usuario);
@@ -97,7 +99,7 @@ class AuthController extends Controller
         // HttpOnly: JavaScript não pode acessar (protege contra XSS)
         // Secure: apenas HTTPS em produção
         // SameSite=Strict: previne CSRF
-        $expiry = time() + (int) ($_ENV['JWT_EXPIRY'] ?? 3600);
+        $expiry = time() + $this->jwtService->getExpiracaoEmSegundos();
         $isProduction = ($_ENV['APP_ENV'] ?? 'development') === 'production';
         $secureFlag = $isProduction ? 'Secure; ' : '';
 
@@ -124,14 +126,10 @@ class AuthController extends Controller
     {
         // Com a rota protegida por JwtAuthMiddleware, o cookie já foi validado.
         // Ainda assim, só consideramos o cookie HttpOnly para revogação.
-        $token = $this->obterTokenCookie($request);
+        $payload = $request->getAttribute('jwt_payload');
 
-        if ($token) {
-            $payload = $this->decodificarToken($token);
-            if ($payload && isset($payload['jti']) && isset($payload['exp'])) {
-                // Adiciona o jti à blacklist até a expiração original do token
-                TokenRevogado::revogar($payload['jti'], $payload['exp']);
-            }
+        if (is_array($payload) && isset($payload['jti'], $payload['exp'])) {
+            TokenRevogado::revogar((string) $payload['jti'], (int) $payload['exp']);
         }
 
         // Limpa tokens expirados da blacklist
@@ -148,70 +146,6 @@ class AuthController extends Controller
         );
 
         return $response;
-    }
-
-    /**
-     * Obtém o token JWT da requisição
-     *
-     * @param ServerRequestInterface $request Requisição HTTP
-     * @return string|null Token encontrado ou null
-     */
-    private function obterToken(ServerRequestInterface $request): ?string
-    {
-        // Tenta primeiro o header Authorization: Bearer <token>
-        $authHeader = $request->getHeaderLine('Authorization');
-        if (!empty($authHeader) && str_starts_with($authHeader, 'Bearer ')) {
-            return substr($authHeader, 7);
-        }
-
-        // Fallback: tenta o cookie
-        $cookies = $request->getCookieParams();
-        return $cookies['token'] ?? null;
-    }
-
-    /**
-     * Obtém o token JWT exclusivamente do cookie HttpOnly.
-     *
-     * No logout, a revogação deve refletir apenas a sessão autenticada do navegador,
-     * evitando aceitar um Bearer arbitrário enviado fora do fluxo principal.
-     */
-    private function obterTokenCookie(ServerRequestInterface $request): ?string
-    {
-        $cookies = $request->getCookieParams();
-        return $cookies['token'] ?? null;
-    }
-
-    /**
-     * Decodifica o token JWT sem validar assinatura
-     *
-     * @param string $token Token JWT
-     * @return array|null Payload decodificado ou null
-     */
-    private function decodificarToken(string $token): ?array
-    {
-        $parts = explode('.', $token);
-        if (count($parts) !== 3) {
-            return null;
-        }
-
-        $payloadEncoded = $parts[1];
-        try {
-            $payload = json_decode($this->base64UrlDecode($payloadEncoded), true, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
-            $payload = null;
-        }
-
-        return is_array($payload) ? $payload : null;
-    }
-
-    private function base64UrlDecode(string $data): string
-    {
-        $remainder = strlen($data) % 4;
-        if ($remainder) {
-            $data .= str_repeat('=', 4 - $remainder);
-        }
-        $decoded = base64_decode(strtr($data, '-_', '+/'), true);
-        return $decoded !== false ? $decoded : '';
     }
 
     /**
@@ -247,94 +181,4 @@ class AuthController extends Controller
         return $this->resource->item($usuario);
     }
 
-    /**
-     * Gera token JWT
-     *
-     * JWT (JSON Web Token) é um padrão aberto (RFC 7519) para
-     * criar tokens de acesso compactos e auto-contidos.
-     *
-     * Estrutura do JWT: header.payload.signature
-     * - Header: tipo do token e algoritmo (HS256)
-     * - Payload: claims (sub=id, email, tipo, jti, iat, exp)
-     * - Signature: assinatura com chave secreta
-     *
-     * @param array $usuario Dados do usuário para incluir no token
-     * @return string Token JWT completo
-     */
-    private function gerarToken(array $usuario): string
-    {
-        $secret = $_ENV['JWT_SECRET'] ?? null;
-        if (empty($secret)) {
-            throw new \RuntimeException('JWT_SECRET não configurado. Defina a variável JWT_SECRET no arquivo .env');
-        }
-
-        $expiry = (int) ($_ENV['JWT_EXPIRY'] ?? 3600);
-        $issuer = $this->getJwtIssuer();
-        $audience = $this->getJwtAudience();
-        $issuedAt = time();
-
-        $header = [
-            'typ' => 'JWT',
-            'alg' => 'HS256',
-        ];
-
-        // Gera UUID único para o token (jti = JWT ID)
-        $jti = $this->gerarUuid();
-
-        $payload = [
-            'sub' => (string) $usuario['id'],
-            'email' => $usuario['email'],
-            'tipo' => $usuario['tipo'],
-            'jti' => $jti,
-            'iss' => $issuer,
-            'aud' => $audience,
-            'iat' => $issuedAt,
-            'nbf' => $issuedAt,
-            'exp' => $issuedAt + $expiry,
-        ];
-
-        $headerEncoded = $this->base64UrlEncode(json_encode($header));
-        $payloadEncoded = $this->base64UrlEncode(json_encode($payload));
-
-        $signature = $this->base64UrlEncode(
-            hash_hmac('sha256', "{$headerEncoded}.{$payloadEncoded}", $secret, true)
-        );
-
-        return "{$headerEncoded}.{$payloadEncoded}.{$signature}";
-    }
-
-    /**
-     * Gera UUID v4 único
-     *
-     * @return string UUID único
-     */
-    private function gerarUuid(): string
-    {
-        return sprintf(
-            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            random_int(0, 0xffff),
-            random_int(0, 0xffff),
-            random_int(0, 0xffff),
-            random_int(0, 0x0fff) | 0x4000,
-            random_int(0, 0x3fff) | 0x8000,
-            random_int(0, 0xffff),
-            random_int(0, 0xffff),
-            random_int(0, 0xffff)
-        );
-    }
-
-    private function base64UrlEncode(string $data): string
-    {
-        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
-    }
-
-    private function getJwtIssuer(): string
-    {
-        return (string) ($_ENV['JWT_ISSUER'] ?? $_ENV['APP_URL'] ?? 'parrot-php');
-    }
-
-    private function getJwtAudience(): string
-    {
-        return (string) ($_ENV['JWT_AUDIENCE'] ?? 'parrot-api');
-    }
 }

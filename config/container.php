@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * ===========================================
  * Configuração do Container (PHP-DI)
@@ -29,6 +31,7 @@ use App\Cache\ArrayKeyValueStore;
 use App\Cache\KeyValueStoreInterface;
 use App\Cache\RedisKeyValueStore;
 use App\Core\DatabaseCapsule;
+use App\Core\JwtService;
 use App\Middlewares\JwtAuthMiddleware;
 use App\Middlewares\CorsMiddleware;
 use App\Middlewares\RateLimitMiddleware;
@@ -88,7 +91,7 @@ return [
 
         'jwt' => [
             'secret' => env_config('JWT_SECRET', ''),
-            'expiry' => env_config('JWT_EXPIRY', 3600),
+            'expiry' => (int) env_config('JWT_EXPIRY', 3600),
             'issuer' => env_config('JWT_ISSUER', env_config('APP_URL', 'parrot-php')),
             'audience' => env_config('JWT_AUDIENCE', 'parrot-api'),
         ],
@@ -116,13 +119,17 @@ return [
             'password' => env_config('REDIS_PASSWORD', null),
             'timeout' => (float) env_config('REDIS_TIMEOUT', 1.5),
         ],
+        'trusted_proxy_ips' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env_config('TRUSTED_PROXY_IPS', ''))
+        ))),
     ],
 
     KeyValueStoreInterface::class => function ($container) {
         $config = $container->get('config');
         $store = $config['cache']['store'];
 
-        if ($store === 'array' || $store === 'memory' || getenv('APP_ENV') === 'testing') {
+        if ($store === 'array' || $store === 'memory' || env_config('APP_ENV') === 'testing') {
             return new ArrayKeyValueStore();
         }
 
@@ -154,6 +161,17 @@ return [
         return new DatabaseCapsule($dbConfig);
     },
 
+    JwtService::class => function ($container) {
+        $jwtConfig = $container->get('config')['jwt'];
+
+        return new JwtService(
+            (string) $jwtConfig['secret'],
+            (int) $jwtConfig['expiry'],
+            (string) $jwtConfig['issuer'],
+            (string) $jwtConfig['audience']
+        );
+    },
+
     CorsMiddleware::class => function ($container) {
         $corsConfig = $container->get('config')['cors'];
         return new CorsMiddleware($corsConfig['allowed_origins']);
@@ -163,6 +181,8 @@ return [
         $rateLimitConfig = $container->get('config')['rate_limit'];
         return new RateLimitMiddleware(
             $container->get(KeyValueStoreInterface::class),
+            $container->get(JwtService::class),
+            $container->get('config')['trusted_proxy_ips'],
             $rateLimitConfig['max_requests'],
             $rateLimitConfig['window_seconds']
         );
@@ -173,6 +193,8 @@ return [
         $rateLimitConfig = $container->get('config')['rate_limit_login'];
         return new RateLimitMiddleware(
             $container->get(KeyValueStoreInterface::class),
+            $container->get(JwtService::class),
+            $container->get('config')['trusted_proxy_ips'],
             $rateLimitConfig['max_requests'],
             $rateLimitConfig['window_seconds']
         );
@@ -183,8 +205,8 @@ return [
     },
 
     ErrorHandlerMiddleware::class => function ($container) {
-        $env = getenv('APP_ENV') ?: 'development';
-        $debug = getenv('APP_DEBUG');
+        $env = (string) env_config('APP_ENV', 'development');
+        $debug = env_config('APP_DEBUG');
 
         $displayErrors = ($env === 'development') && ($debug !== 'false');
 
@@ -220,12 +242,13 @@ return [
 
         return new AuthController(
             $container->get(UserModel::class),
-            $container->get(UserResource::class)
+            $container->get(UserResource::class),
+            $container->get(JwtService::class)
         );
     },
 
     JwtAuthMiddleware::class => function ($container) {
         $container->get(TokenRevogado::class);
-        return new JwtAuthMiddleware();
+        return new JwtAuthMiddleware($container->get(JwtService::class));
     },
 ];

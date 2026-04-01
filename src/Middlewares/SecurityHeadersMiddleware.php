@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Parrot PHP Framework - Security Headers Middleware
  *
@@ -51,7 +53,10 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
     ): ResponseInterface {
         $response = $handler->handle($request);
 
-        return $response
+        $protocoloEncaminhado = strtolower(trim($request->getHeaderLine('X-Forwarded-Proto')));
+        $ehHttps = $request->getUri()->getScheme() === 'https' || $protocoloEncaminhado === 'https';
+
+        $response = $response
             ->withHeader('X-Content-Type-Options', 'nosniff')
             ->withHeader('X-Frame-Options', 'DENY')
             ->withHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
@@ -62,7 +67,12 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
             )
             ->withHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
             ->withHeader('Cache-Control', 'no-store, max-age=0')
-            ->withHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
             ->withoutHeader('X-Powered-By');
+
+        if ($ehHttps) {
+            $response = $response->withHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        }
+
+        return $response;
     }
 }

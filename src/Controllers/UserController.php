@@ -95,7 +95,7 @@ class UserController extends Controller
         $resultado = $this->model->paginateWithoutTrashed($page, $limit);
 
         return $this->success([
-            'data' => $resultado['data'],
+            'data' => $this->resource->toCollectionArray($resultado['data']),
             'meta' => $resultado['meta'],
         ]);
     }
@@ -110,8 +110,11 @@ class UserController extends Controller
      */
     public function show(ServerRequestInterface $request): ResponseInterface
     {
-        // Obtém ID da URL (/usuarios/{id})
-        $id = (int) $this->getParam($request, 'id');
+        $id = $this->getPositiveIntParam($request, 'id');
+
+        if ($id === null) {
+            return $this->error('O parâmetro id deve ser um inteiro positivo.', 422);
+        }
 
         // Verifica autorização (IDOR protection)
         if (!$this->canAccessUser($request, $id)) {
@@ -134,10 +137,9 @@ class UserController extends Controller
      * Endpoint: POST /api/usuarios
      *
      * Validações:
-     * - nome: obrigatório
-     * - email: obrigatório
-     * - senha: obrigatória, mínimo 6 caracteres
-     * - tipo: opcional (padrão 'user'), deve ser 'admin' ou 'user'
+     * - nome: obrigatório, mínimo 3 caracteres
+     * - email: obrigatório e válido
+     * - senha: obrigatória e forte
      *
      * @param ServerRequestInterface $request Requisição com dados no body
      * @return ResponseInterface Usuário criado ou erros de validação
@@ -148,11 +150,11 @@ class UserController extends Controller
             return $this->forbidden('Apenas administradores podem criar utilizadores');
         }
 
-        $body = $this->getBody($request);
+        $body = $this->normalizarEntrada($this->getBody($request));
 
         $errors = $this->validate($body, [
-            'nome' => 'required',
-            'email' => 'required|email',
+            'nome' => 'required|min:3|max:255',
+            'email' => 'required|email|max:255',
             'senha' => 'required|strong_password',
         ]);
 
@@ -180,10 +182,9 @@ class UserController extends Controller
      *
      * Endpoint: PUT /api/usuarios/{id}
      *
-     * Campos atualizáveis: nome, email, senha, tipo
+     * Campos atualizáveis: nome, email e senha
      * Validações:
      * - Email deve ser único (se alterado)
-     * - Tipo deve ser 'admin' ou 'user'
      * - Senha vazia não é atualizada
      *
      * @param ServerRequestInterface $request Requisição com {id} e dados no body
@@ -191,10 +192,12 @@ class UserController extends Controller
      */
     public function update(ServerRequestInterface $request): ResponseInterface
     {
-        // Obtém ID da URL
-        $id = (int) $this->getParam($request, 'id');
-        // Obtém dados do corpo
-        $body = $this->getBody($request);
+        $id = $this->getPositiveIntParam($request, 'id');
+        if ($id === null) {
+            return $this->error('O parâmetro id deve ser um inteiro positivo.', 422);
+        }
+
+        $body = $this->normalizarEntrada($this->getBody($request));
 
         // Verifica autorização (IDOR protection)
         if (!$this->canAccessUser($request, $id)) {
@@ -212,9 +215,22 @@ class UserController extends Controller
             return $this->error('Nenhum dado para atualizar', 422);
         }
 
+        $camposPermitidos = ['nome', 'email', 'senha', 'senha_atual'];
+        $body = array_intersect_key($body, array_flip($camposPermitidos));
+
+        $dadosAtualizaveis = array_intersect_key($body, array_flip(['nome', 'email', 'senha']));
+        if ($dadosAtualizaveis === []) {
+            return $this->error('Nenhum campo permitido foi informado para atualização.', 422);
+        }
+
+        $errosValidacao = $this->validarAtualizacao($dadosAtualizaveis);
+        if ($errosValidacao !== []) {
+            return $this->resource->validationError($errosValidacao);
+        }
+
         // Validação de segurança: exigir senha atual para alterar credenciais
-        $tentandoAlterarEmail = isset($body['email']) && $body['email'] !== $usuario['email'];
-        $tentandoAlterarSenha = !empty($body['senha']);
+        $tentandoAlterarEmail = isset($dadosAtualizaveis['email']) && $dadosAtualizaveis['email'] !== $usuario['email'];
+        $tentandoAlterarSenha = !empty($dadosAtualizaveis['senha']);
 
         if ($tentandoAlterarEmail || $tentandoAlterarSenha) {
             if (empty($body['senha_atual'])) {
@@ -228,17 +244,14 @@ class UserController extends Controller
         }
 
         // Verifica se email já está em uso (se alterado)
-        if (isset($body['email']) && $body['email'] !== $usuario['email']) {
-            $existing = $this->model->findByEmail($body['email']);
+        if (isset($dadosAtualizaveis['email']) && $dadosAtualizaveis['email'] !== $usuario['email']) {
+            $existing = $this->model->findByEmail($dadosAtualizaveis['email']);
             if ($existing) {
                 return $this->error('Não foi possível processar a atualização com os dados fornecidos.', 422);
             }
         }
 
-        // Filtra apenas campos permitidos (prevenção de campos extras)
-        // Nota: 'tipo' foi removido para prevenir escalação de privilégios via Mass Assignment
-        $allowedFields = ['nome', 'email', 'senha'];
-        $data = array_intersect_key($body, array_flip($allowedFields));
+        $data = $dadosAtualizaveis;
 
         // Remove senha se vazia (não alterar)
         if (isset($data['senha']) && empty($data['senha'])) {
@@ -266,18 +279,12 @@ class UserController extends Controller
      * @param ServerRequestInterface $request Requisição com {id}
      * @return ResponseInterface Sucesso ou 404
      */
-    /**
-     * Remove um usuário (soft delete)
-     *
-     * Endpoint: DELETE /api/usuarios/{id}
-     *
-     * @param ServerRequestInterface $request Requisição com {id}
-     * @return ResponseInterface Sucesso ou 404
-     */
     public function destroy(ServerRequestInterface $request): ResponseInterface
     {
-        // Obtém ID da URL
-        $id = (int) $this->getParam($request, 'id');
+        $id = $this->getPositiveIntParam($request, 'id');
+        if ($id === null) {
+            return $this->error('O parâmetro id deve ser um inteiro positivo.', 422);
+        }
 
         // Verifica autorização (IDOR protection)
         if (!$this->canAccessUser($request, $id)) {
@@ -294,5 +301,47 @@ class UserController extends Controller
         $this->model->softDelete($id);
 
         return $this->resource->deleted('Usuário removido com sucesso');
+    }
+
+    private function normalizarEntrada(array $dados): array
+    {
+        $dadosNormalizados = [];
+
+        foreach ($dados as $campo => $valor) {
+            if (!is_string($campo)) {
+                continue;
+            }
+
+            if (is_string($valor)) {
+                $valor = trim($valor);
+            }
+
+            if ($campo === 'email' && is_string($valor)) {
+                $valor = mb_strtolower($valor);
+            }
+
+            $dadosNormalizados[$campo] = $valor;
+        }
+
+        return $dadosNormalizados;
+    }
+
+    private function validarAtualizacao(array $dados): array
+    {
+        $regras = [];
+
+        if (array_key_exists('nome', $dados)) {
+            $regras['nome'] = 'required|min:3|max:255';
+        }
+
+        if (array_key_exists('email', $dados)) {
+            $regras['email'] = 'required|email|max:255';
+        }
+
+        if (array_key_exists('senha', $dados) && $dados['senha'] !== '') {
+            $regras['senha'] = 'strong_password';
+        }
+
+        return $regras === [] ? [] : $this->validate($dados, $regras);
     }
 }

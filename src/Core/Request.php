@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Parrot PHP Framework - Request Helper
  *
@@ -124,19 +126,8 @@ class Request
      */
     public static function getUserIdFromToken(ServerRequestInterface $request): ?int
     {
-        // Se o middleware já validou, retorna o user_id dos atributos
         $userId = $request->getAttribute('user_id');
-        if ($userId !== null) {
-            return (int) $userId;
-        }
 
-        // Fallback: tenta ler do header Authorization (para compatibilidade)
-        $authHeader = $request->getHeaderLine('Authorization');
-        if (empty($authHeader) || !str_starts_with($authHeader, 'Bearer ')) {
-            return null;
-        }
-
-        // Retorna null se não houve autenticação prévia
-        return null;
+        return is_numeric($userId) ? (int) $userId : null;
     }
 }

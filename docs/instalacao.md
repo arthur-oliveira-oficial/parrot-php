@@ -1,176 +1,214 @@
 # Instalação do Parrot PHP
 
+Este guia segue o comportamento real do repositório atual.
+
 ## Requisitos
 
-- **PHP 8.4+** (obrigatório)
-- **Composer**
-- **MySQL/MariaDB** ou outro banco de dados suportado
+- PHP `8.4`
+- Composer
+- MySQL ou MariaDB
+- Extensão `pdo_mysql`
+- Extensão `mbstring`
+- Extensão `json`
+- Extensão `ctype`
+- Redis apenas para produção, quando `CACHE_STORE=redis` ou `CACHE_STORE=auto` com exigência de cache distribuído
 
-### FrankenPHP: Versões ZTS
+Dependências de Composer usadas pelo projeto:
 
-O FrankenPHP **obrigatoriamente** precisa de PHP com ZTS (Thread Safety). Instale as versões `php-zts-*`:
-
-```bash
-# Dependências ZTS já instaladas no seu sistema:
-php-zts-cli        # Linha de comando
-php-zts-embed      # Biblioteca embed
-php-zts-mysqlnd    # MySQL native driver
-php-zts-pdo        # PDO
-php-zts-pdo-mysql  # PDO MySQL
-
-# Para instalar (se necessário):
-sudo apt install -y php8.5-zts php8.5-zts-cli php8.5-zts-embed php8.5-zts-mysqlnd php8.5-zts-pdo php8.5-zts-pdo-mysql
-```
-
----
+- `nikic/fast-route`
+- `php-di/php-di`
+- `php-di/invoker`
+- `nyholm/psr7`
+- `nyholm/psr7-server`
+- `illuminate/database`
+- `illuminate/events`
+- `predis/predis`
+- `vlucas/phpdotenv`
 
 ## Instalação Rápida
 
 ```bash
-# 1. Instalar dependências do sistema
-sudo apt update
-sudo apt install -y php8.4 php8.4-cli php8.4-fpm php8.4-mbstring php8.4-json php8.4-ctype php8.4-pdo php8.4-mysql php8.4-xml php8.4-curl php8.4-zip php8.4-bcmath php8.4-intl composer nginx
-
-# 2. Instalar dependências do projeto
+git clone https://github.com/arthur-oliveira-oficial/parrot-php.git
+cd parrot-php
 composer install
-
-# 3. Configurar .env
 cp .env.example .env
 ```
 
----
+## Configuração do `.env`
 
-## Escolha o Servidor
+Preencha ao menos estas variáveis:
 
-### Opção 1: FrankenPHP (Recomendado)
+```env
+APP_ENV=development
+APP_DEBUG=true
+APP_URL=http://localhost:8000
 
-Servidor moderno com melhor performance.
+DB_DRIVER=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=parrot_db
+DB_DATABASE=parrot_db
+DB_USER=root
+DB_PASSWORD=
+
+JWT_SECRET=troque_esta_chave_por_um_valor_forte
+JWT_EXPIRY=3600
+JWT_ISSUER=http://localhost:8000
+JWT_AUDIENCE=parrot-api
+
+ADMIN_NAME=Administrador
+ADMIN_EMAIL=admin@parrot.com
+ADMIN_PASSWORD=troque_esta_senha
+
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+TRUSTED_PROXY_IPS=
+
+RATE_LIMIT_MAX_REQUESTS=60
+RATE_LIMIT_WINDOW_SECONDS=60
+RATE_LIMIT_LOGIN_MAX_REQUESTS=5
+RATE_LIMIT_LOGIN_WINDOW_SECONDS=900
+
+CACHE_STORE=auto
+CACHE_PREFIX=parrot:
+
+REDIS_SCHEME=tcp
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_DATABASE=0
+REDIS_PASSWORD=
+REDIS_TIMEOUT=1.5
+```
+
+Notas:
+
+- `config/container.php` aceita `DB_DATABASE` e também faz fallback para `DB_NAME`.
+- Os scripts de banco em `database/scripts/*.php` leem `DB_NAME`, então mantenha `DB_NAME` preenchido.
+- `JWT_SECRET` vazio faz a aplicação falhar ao resolver `JwtService`.
+- `APP_URL` também é usado para derivar a origem permitida da própria aplicação no CORS e no CSRF guard.
+
+## Banco de Dados
+
+Crie o banco configurado em `DB_NAME` e execute:
 
 ```bash
-# Instalar Caddy com FrankenPHP
-curl https://frankenphp.dev/install.sh | sh
+php database/scripts/migrate.php
+php database/scripts/seed.php
 ```
 
-Crie o arquivo `Caddyfile` na raiz do projeto:
+O projeto cria hoje estas tabelas:
 
-```caddy
-{
-    frankenphp
-}
+- `migrations`
+- `usuarios`
+- `tokens_revogados`
 
-:8080 {
-    root * public/
-    php_server
-}
+O seed `database/seed/001_admin.php` cria um administrador com:
 
-```
+- `nome` vindo de `ADMIN_NAME`
+- `email` vindo de `ADMIN_EMAIL`
+- `senha` com hash `PASSWORD_ARGON2ID`
 
-Iniciar:
-```bash
-frankenphp run
-```
+## Executando Localmente
 
-### Opção 2: Nginx + PHP-FPM
+Servidor embutido do PHP:
 
 ```bash
-sudo apt install -y nginx
+php -S localhost:8000 -t public
 ```
 
-Crie `/etc/nginx/sites-available/parrot-php`:
+Caddy com FrankenPHP, usando o `Caddyfile` do repositório:
 
-```nginx
-server {
-    listen 80;
-    server_name localhost;
-    root /caminho/para/parrot-php/public;
-    index index.php index.html;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
-    }
-}
-```
-
-Ativar:
 ```bash
-sudo ln -s /etc/nginx/sites-available/parrot-php /etc/nginx/sites-enabled/
-sudo systemctl reload nginx
+caddy run
 ```
 
----
+O `Caddyfile` atual publica `public/` em `:8080`.
 
-## Configuração .env
+## Fluxo de Inicialização
+
+O bootstrap real é:
+
+1. `public/index.php` registra um handler global de exceção.
+2. Carrega `vendor/autoload.php`.
+3. Carrega `.env` quando `APP_ENV` não é `production`.
+4. Monta o container PHP-DI com `config/container.php`.
+5. Inicializa `App\Core\DatabaseCapsule`.
+6. Instancia `App\Core\Application`.
+7. Carrega `config/routes.php` e `config/middlewares.php`.
+8. Cria a request PSR-7 e processa a pipeline.
+
+## Middlewares e Segurança
+
+Ordem dos middlewares globais:
+
+1. `ErrorHandlerMiddleware`
+2. `SecurityHeadersMiddleware`
+3. `RateLimitMiddleware`
+4. `CorsMiddleware`
+5. `CsrfGuardMiddleware`
+
+Regras relevantes:
+
+- `JwtAuthMiddleware` só entra em rotas protegidas.
+- O JWT é aceito exclusivamente do cookie `token`.
+- O cookie sai com `HttpOnly` e `SameSite=Strict`.
+- `Secure` é aplicado em HTTPS, produção, ou `X-Forwarded-Proto=https` vindo de proxy confiável.
+- Escritas autenticadas por cookie exigem `Origin` ou `Referer` compatíveis com a whitelist.
+
+## Cache e Redis
+
+O container escolhe a implementação de `KeyValueStoreInterface` assim:
+
+- `testing`: sempre `ArrayKeyValueStore`
+- `development` com `CACHE_STORE=auto`: tenta Redis, depois APCu, depois array
+- `CACHE_STORE=redis`: exige conexão funcional com Redis
+- `production`: exige cache distribuído e rejeita `array`, `memory` e `apcu`
+
+Consequência prática:
+
+- desenvolvimento pode rodar sem Redis
+- produção deve usar Redis para rate limit e blacklist de JWT
+
+## Testes
+
+A suíte usa MySQL real. Não adapte para SQLite.
+
+Executar tudo:
+
+```bash
+./vendor/bin/phpunit
+```
+
+Executar um teste específico:
+
+```bash
+./vendor/bin/phpunit --filter AuthTest
+```
+
+Premissas da suíte em `phpunit.xml` e `tests/TestCase.php`:
+
+- `APP_ENV=testing`
+- `DB_DRIVER=mysql`
+- banco esperado: `parrot_test`
+- o banco é criado se não existir
+- todas as tabelas são recriadas a cada teste
+- os seeds são executados a cada teste
+
+## Produção
+
+Para subir com o comportamento esperado do código atual:
 
 ```env
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=http://localhost:8080
-
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=parrot_php
-DB_USERNAME=seu_usuario
-DB_PASSWORD=sua_senha
-
-# JWT (use uma chave forte!)
-JWT_SECRET=sua_chave_secreta_aqui
-JWT_ISSUER=http://localhost:8080
-JWT_AUDIENCE=parrot-api
-
-# Seed do administrador
-ADMIN_NAME=Administrador
-ADMIN_EMAIL=admin@seudominio.com
-ADMIN_PASSWORD=troque_esta_senha
+CACHE_STORE=redis
 ```
 
----
+Checklist mínimo:
 
-## Produção: Ajustes Obrigatórios
+- definir `JWT_SECRET` forte
+- publicar atrás de HTTPS
+- preencher `TRUSTED_PROXY_IPS` se houver proxy reverso
+- garantir Redis disponível
+- injetar variáveis de ambiente pelo servidor ou orquestrador
 
-Antes de colocar em produção, faça estas alterações:
-
-```bash
-# 1. Altere o .env:
-APP_ENV=production
-APP_DEBUG=false
-JWT_SECRET=chave_muito_segura_aqui  # Gere com: openssl rand -base64 32
-
-# 2. Otimize o Composer para produção:
-composer install --no-dev --optimize-autoloader --classmap-authoritative
-```
-
----
-
-## Verificação
-
-```bash
-php -v
-composer --version
-curl http://localhost:8080
-```
-
----
-
-## Problemas Comuns
-
-| Problema | Solução |
-|----------|---------|
-| PHP não encontrado | `sudo apt install php8.4` |
-| Extensão PDO missing | `sudo apt install php8.4-pdo` |
-| Banco de dados não conecta | Verifique credenciais no .env |
-| Porta em uso | Altere a porta no Caddyfile ou Nginx |
-
----
-
-## Próximos Passos
-
-1. Configure o banco de dados no `.env`
-2. Execute `composer install`
-3. Inicie o servidor
-4. Acesse `http://localhost:8080`
+Em produção, `public/index.php` não carrega `.env` por arquivo. As variáveis devem vir do ambiente do processo.

@@ -1,107 +1,79 @@
 # Parrot PHP
 
-Micro-framework REST em PHP 8.4 para APIs JSON, com roteamento via FastRoute, injeção de dependências com PHP-DI, request/response PSR-7, middlewares PSR-15 e persistência principal em Eloquent.
+Micro-framework REST em PHP 8.4 para APIs JSON, com FastRoute, PHP-DI, PSR-7/PSR-15, Eloquent, JWT manual via cookie `HttpOnly` e testes integrados contra MySQL.
 
-O repositório atual implementa autenticação JWT manual com cookie `HttpOnly`, CRUD de usuários, blacklist persistida de tokens revogados, rate limit, CORS, proteção de CSRF para escritas autenticadas por cookie e testes integrados contra MySQL.
+O README abaixo descreve o que o repositório implementa hoje.
 
-## Visão Geral
+## Stack Atual
 
 - PHP `^8.4`
-- `nikic/fast-route` para roteamento
-- `php-di/php-di` e `php-di/invoker` para DI e invocação de controllers
-- `nyholm/psr7` e `nyholm/psr7-server` para PSR-7
-- `illuminate/database` e `illuminate/events` para Eloquent
-- `predis/predis` para cache distribuído opcional
-- `vlucas/phpdotenv` para ambiente fora de produção
-- PHPUnit 11 para testes
+- `nikic/fast-route`
+- `php-di/php-di`
+- `php-di/invoker`
+- `nyholm/psr7`
+- `nyholm/psr7-server`
+- `illuminate/database`
+- `illuminate/events`
+- `predis/predis`
+- PHPUnit 11
 
-Fluxo HTTP atual:
+## Fluxo HTTP
 
 ```text
 public/index.php
--> App\Core\Application
+-> container PHP-DI
+-> DatabaseCapsule
+-> Application
 -> middlewares globais
--> App\Core\FastRouteRouter
+-> FastRouteRouter
 -> middleware de rota
 -> controller
 -> model / resource
 -> resposta JSON
 ```
 
-## O Que Já Existe
+## O Que Existe no Código
 
-- Autenticação:
-  - `POST /api/auth/login`
-  - `POST /api/auth/logout`
-  - `GET /api/auth/me`
-- Usuários:
-  - `GET /api/usuarios`
-  - `GET /api/usuarios/{id}`
-  - `POST /api/usuarios`
-  - `PUT /api/usuarios/{id}`
-  - `DELETE /api/usuarios/{id}`
-- Blacklist persistida de JWT em `tokens_revogados`
-- Cache abstrato com implementações `Array`, `APCu` e `Redis`
-- Seed inicial de administrador
-- Migrations e scripts CLI para banco
-
-## Segurança Implementada
-
-- JWT assinado manualmente com `HS256`
-- Token aceito exclusivamente do cookie `token`
-- Cookie de autenticação com `HttpOnly` e `SameSite=Strict`
-- `Secure` habilitado em HTTPS, produção ou `X-Forwarded-Proto=https` vindo de proxy confiável
-- Revogação de token em logout com persistência e cache
-- Rate limit global por usuário autenticado (`sub` do JWT) ou por IP como fallback
-- Rate limit específico no login
-- Proteção de CSRF em métodos de escrita quando existe cookie de autenticação
-- CORS com lista explícita de origens permitidas
-- Headers de segurança com CSP, HSTS, `X-Frame-Options`, `Referrer-Policy` e `Permissions-Policy`
-- Senhas com `PASSWORD_ARGON2ID`
-- Soft delete de usuários com `deletado_em`
-- Respostas JSON padronizadas por `App\Core\Response` e `src/Views`
+- autenticação manual com JWT assinado em `HS256`
+- token entregue e lido exclusivamente do cookie `token`
+- logout com blacklist persistida em `tokens_revogados`
+- CRUD de usuários com soft delete em `deletado_em`
+- rate limit global e rate limit específico de login
+- CORS com whitelist explícita
+- proteção de CSRF para escritas autenticadas por cookie
+- headers de segurança e HSTS quando aplicável
+- cache abstrato com `Array`, `APCu` e `Redis`
 
 ## Estrutura
 
 ```text
-parrot-php/
-├── config/
-│   ├── container.php
-│   ├── middlewares.php
-│   └── routes.php
-├── database/
-│   ├── migrations/
-│   ├── scripts/
-│   └── seed/
-├── public/
-│   └── index.php
-├── src/
-│   ├── Cache/
-│   ├── Controllers/
-│   ├── Core/
-│   ├── Exceptions/
-│   ├── Middlewares/
-│   ├── Models/
-│   └── Views/
-├── tests/
-├── Caddyfile
-├── composer.json
-├── phpunit.xml
-└── README.md
+config/
+database/
+docs/
+public/
+src/
+tests/
 ```
+
+Pastas principais:
+
+- `config/`: container, rotas e middlewares
+- `src/Core/`: kernel HTTP, router, JWT, response e banco
+- `src/Controllers/`: `AuthController` e `UserController`
+- `src/Models/`: `EloquentModel`, `UserModel`, `TokenRevogado`
+- `src/Middlewares/`: autenticação, CORS, CSRF, rate limit, erro e headers
+- `src/Views/`: `Resource` e `UserResource`
+- `database/migrations/`: schema atual
+- `database/seed/`: seed inicial
+- `tests/`: suíte integrada com MySQL
 
 ## Requisitos
 
-- PHP 8.4 com extensões compatíveis com `pdo_mysql`
+- PHP 8.4
 - Composer
 - MySQL ou MariaDB
-- Redis em produção se você quiser subir a aplicação com a configuração segura esperada pelo projeto
-
-Observações importantes:
-
-- O projeto usa Eloquent como camada principal de persistência.
-- A suíte de testes não usa SQLite.
-- Em `APP_ENV=production`, cache em memória local (`array`, `memory`, `apcu`) é rejeitado pelo container.
+- `pdo_mysql`
+- Redis em produção
 
 ## Instalação
 
@@ -112,9 +84,7 @@ composer install
 cp .env.example .env
 ```
 
-Ajuste o `.env` com os valores do seu ambiente.
-
-Variáveis principais:
+Exemplo mínimo de configuração:
 
 ```env
 APP_ENV=development
@@ -122,20 +92,21 @@ APP_DEBUG=true
 APP_URL=http://localhost:8000
 
 DB_DRIVER=mysql
-DB_HOST=localhost
+DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_NAME=parrot_db
+DB_DATABASE=parrot_db
 DB_USER=root
-DB_PASSWORD=inserir_password_aqui
+DB_PASSWORD=
 
-JWT_SECRET=alterar_para_uma_chave_secreta_forte_em_producao
+JWT_SECRET=troque_esta_chave
 JWT_EXPIRY=3600
 JWT_ISSUER=http://localhost:8000
 JWT_AUDIENCE=parrot-api
 
 ADMIN_NAME=Administrador
 ADMIN_EMAIL=admin@parrot.com
-ADMIN_PASSWORD=troque_esta_senha_imediatamente
+ADMIN_PASSWORD=troque_esta_senha
 
 CORS_ALLOWED_ORIGINS=http://localhost:3000
 TRUSTED_PROXY_IPS=
@@ -145,7 +116,7 @@ RATE_LIMIT_WINDOW_SECONDS=60
 RATE_LIMIT_LOGIN_MAX_REQUESTS=5
 RATE_LIMIT_LOGIN_WINDOW_SECONDS=900
 
-CACHE_STORE=redis
+CACHE_STORE=auto
 CACHE_PREFIX=parrot:
 
 REDIS_SCHEME=tcp
@@ -156,22 +127,26 @@ REDIS_PASSWORD=
 REDIS_TIMEOUT=1.5
 ```
 
-## Banco de Dados
+Observações:
 
-Crie o banco configurado no `.env` e execute:
+- `config/container.php` usa `DB_DATABASE` com fallback para `DB_NAME`.
+- `database/scripts/migrate.php` e `database/scripts/seed.php` leem `DB_NAME`.
+- `JWT_SECRET` é obrigatório.
+
+## Banco e Seed
 
 ```bash
 php database/scripts/migrate.php
 php database/scripts/seed.php
 ```
 
-O seed inicial cria o administrador a partir de `ADMIN_NAME`, `ADMIN_EMAIL` e `ADMIN_PASSWORD`.
-
-Tabelas atuais:
+Schema atual:
 
 - `usuarios`
 - `tokens_revogados`
 - `migrations`
+
+O seed inicial cria um administrador com `ADMIN_NAME`, `ADMIN_EMAIL` e `ADMIN_PASSWORD`.
 
 ## Executando Localmente
 
@@ -181,17 +156,60 @@ Servidor embutido do PHP:
 php -S localhost:8000 -t public
 ```
 
-Ou com Caddy/FrankenPHP:
+Caddy/FrankenPHP:
 
 ```bash
 caddy run
 ```
 
-O `Caddyfile` atual publica `public/` em `:8080`.
+O `Caddyfile` atual expõe a aplicação em `:8080`.
+
+## Rotas Atuais
+
+Autenticação:
+
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+
+Usuários:
+
+- `GET /api/usuarios`
+- `GET /api/usuarios/{id}`
+- `POST /api/usuarios`
+- `PUT /api/usuarios/{id}`
+- `DELETE /api/usuarios/{id}`
+
+Middlewares de rota:
+
+- `POST /api/auth/login`: alias `rate_limit_login`
+- demais rotas acima, exceto login: `JwtAuthMiddleware`
+
+## Segurança Implementada
+
+- JWT manual com `iss`, `aud`, `sub`, `jti`, `iat`, `nbf` e `exp`
+- cookie `token` com `HttpOnly` e `SameSite=Strict`
+- `Secure` ativado em HTTPS, produção ou proxy confiável com `X-Forwarded-Proto=https`
+- blacklist de JWT revogado em banco e cache
+- rate limit por `sub` do JWT válido ou IP como fallback
+- proteção contra IDOR em `UserController`
+- alteração de email ou senha exige `senha_atual`
+- senhas com `PASSWORD_ARGON2ID`
+- `UserResource` remove `senha` das respostas
+
+## Controle de Acesso
+
+- `GET /api/usuarios`: apenas admin
+- `GET /api/usuarios/{id}`: admin ou o próprio usuário
+- `POST /api/usuarios`: apenas admin
+- `PUT /api/usuarios/{id}`: admin ou o próprio usuário
+- `DELETE /api/usuarios/{id}`: admin ou o próprio usuário
+
+Usuários criados pela API entram sempre como `tipo=user`.
 
 ## Middlewares Globais
 
-Ordem real definida em `config/middlewares.php`:
+Ordem real em `config/middlewares.php`:
 
 1. `ErrorHandlerMiddleware`
 2. `SecurityHeadersMiddleware`
@@ -199,60 +217,9 @@ Ordem real definida em `config/middlewares.php`:
 4. `CorsMiddleware`
 5. `CsrfGuardMiddleware`
 
-## Autenticação
+## Resposta JSON
 
-### Login
-
-`POST /api/auth/login`
-
-Payload:
-
-```json
-{
-  "email": "admin@parrot.com",
-  "senha": "admin123"
-}
-```
-
-Resposta:
-
-- status `200`
-- corpo JSON com dados do usuário autenticado
-- cookie `token` no header `Set-Cookie`
-
-### Logout
-
-`POST /api/auth/logout`
-
-Comportamento:
-
-- exige JWT válido via cookie
-- revoga o `jti` atual em `tokens_revogados`
-- limpa o cookie `token`
-
-### Usuário Atual
-
-`GET /api/auth/me`
-
-Retorna o usuário autenticado a partir do token presente no cookie.
-
-## Controle de Acesso
-
-- `GET /api/usuarios`: apenas `admin`
-- `GET /api/usuarios/{id}`: `admin` ou o próprio usuário
-- `POST /api/usuarios`: apenas `admin`
-- `PUT /api/usuarios/{id}`: `admin` ou o próprio usuário
-- `DELETE /api/usuarios/{id}`: `admin` ou o próprio usuário
-
-Regras adicionais atuais:
-
-- alteração de email ou senha exige `senha_atual`
-- usuários criados via API entram como `tipo=user`
-- email de usuário removido logicamente continua indisponível para reaproveitamento
-
-## Formato de Resposta
-
-Exemplos comuns:
+Exemplo de sucesso:
 
 ```json
 {
@@ -265,18 +232,16 @@ Exemplos comuns:
 }
 ```
 
+Exemplo de erro:
+
 ```json
 {
   "error": "Erro de validação",
   "errors": {
-    "email": [
-      "O campo email é obrigatório."
-    ]
+    "senha": "O campo senha deve ter pelo menos 8 caracteres, contendo letras maiúsculas, minúsculas e números."
   }
 }
 ```
-
-`UserResource` remove `senha` de todas as respostas.
 
 ## Testes
 
@@ -297,35 +262,36 @@ Premissas reais da suíte:
 - `APP_ENV=testing`
 - `DB_DRIVER=mysql`
 - banco esperado: `parrot_test`
-- o `tests/TestCase.php` cria o banco se necessário
+- `tests/TestCase.php` cria o banco se necessário
 - as tabelas são recriadas a cada teste
-
-Estado validado localmente nesta atualização:
-
-- `35 tests`
-- `1071 assertions`
-- execução concluída com sucesso
 
 ## Produção
 
-Para rodar em produção com o comportamento esperado do código atual:
+O container trata produção de forma mais rígida:
 
-- defina `APP_ENV=production`
-- defina `APP_DEBUG=false`
-- use `JWT_SECRET` forte
-- publique atrás de HTTPS
-- configure `TRUSTED_PROXY_IPS` se houver proxy reverso
-- configure `CACHE_STORE=redis` com Redis disponível
+- `APP_ENV=production` não carrega `.env` automaticamente em `public/index.php`
+- `CACHE_STORE=array`, `memory` e `apcu` são rejeitados
+- Redis passa a ser obrigatório para rate limit e blacklist distribuídos
 
-Sem Redis em produção, o container falha por design.
+Configuração mínima esperada:
 
-## Observações de Implementação
+```env
+APP_ENV=production
+APP_DEBUG=false
+CACHE_STORE=redis
+```
 
-- O model base ativo do framework é `src/Models/EloquentModel.php`
-- o seed do admin e parte da infraestrutura de teste ainda usam PDO diretamente
-- o router aceita middlewares por rota via terceiro elemento no array da rota
-- em produção, o router usa cache de rotas em `cache/routes.php`
+Também ajuste:
+
+- `JWT_SECRET` forte
+- HTTPS
+- `TRUSTED_PROXY_IPS` quando houver proxy reverso
+
+## Documentação Relacionada
+
+- [Instalação](docs/instalacao.md)
+- [Diagrama](docs/diagrama.md)
 
 ## Licença
 
-MIT.
+MIT

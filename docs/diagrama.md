@@ -1,436 +1,213 @@
-# Documentação de Arquitetura do Framework Parrot PHP
+# Diagrama do Parrot PHP
 
-Este documento apresenta a arquitetura completa do framework Parrot PHP através de diagramas visuais que facilitam o entendimento da estrutura e fluxo do sistema.
+Este documento descreve a arquitetura que o código do repositório implementa hoje.
 
----
-
-## 1. Diagrama de Arquitetura Geral
-
-O diagrama abaixo apresenta a visão geral dos principais componentes do framework Parrot PHP, desde o ponto de entrada até a camada de visualização.
+## Visão Geral
 
 ```mermaid
 flowchart TB
-    subgraph PUBLIC["Pública (public/)"]
-        INDEX["index.php<br/>Bootstrap"]
+    subgraph Entrada["Bootstrap"]
+        INDEX["public/index.php"]
+        ENV[".env / variáveis do sistema"]
+        DI["PHP-DI container"]
+        DB["DatabaseCapsule"]
     end
 
-    subgraph CORE["Core"]
+    subgraph Core["Core HTTP"]
         APP["Application"]
-        ROUTER["Router<br/>(FastRouteRouter)"]
-        DBCAPS["DatabaseCapsule"]
-        MIDQ["MiddlewareQueue"]
+        FILA["MiddlewareQueue"]
+        ROUTER["FastRouteRouter"]
+        HANDLER["FastRouteControllerHandler"]
+        RESP["Response"]
     end
 
-    subgraph CONTROLLERS["Controllers"]
-        BASE["Controller<br/>(Base)"]
+    subgraph Globais["Middlewares globais"]
+        ERR["ErrorHandlerMiddleware"]
+        SEC["SecurityHeadersMiddleware"]
+        RL["RateLimitMiddleware"]
+        CORS["CorsMiddleware"]
+        CSRF["CsrfGuardMiddleware"]
+    end
+
+    subgraph Rota["Middleware de rota"]
+        JWT["JwtAuthMiddleware"]
+        LOGINRL["alias rate_limit_login"]
+    end
+
+    subgraph Dominio["Domínio implementado"]
         AUTH["AuthController"]
-        USER["UserController"]
+        USERCTRL["UserController"]
+        USERMODEL["UserModel"]
+        TOKENMODEL["TokenRevogado"]
+        USERRES["UserResource"]
     end
 
-    subgraph MODELS["Models"]
-        MBASE["Model"]
-        ELOQ["EloquentModel"]
-        UM["UserModel"]
-        TKREV["TokenRevogado"]
+    subgraph Infra["Infra de suporte"]
+        JWTSVC["JwtService"]
+        CACHE["KeyValueStoreInterface"]
+        ARRAY["ArrayKeyValueStore"]
+        APCU["ApcuKeyValueStore"]
+        REDIS["RedisKeyValueStore"]
+        MYSQL["MySQL / MariaDB"]
     end
 
-    subgraph MIDDLEWARES["Middlewares"]
-        ERR["ErrorHandler"]
-        CORS["Cors"]
-        JWT["JwtAuth"]
-        RATE["RateLimit"]
-        SEC["SecurityHeaders"]
-    end
-
-    subgraph VIEWS["Views/Resources"]
-        RES["Resource"]
-        URES["UserResource"]
-    end
-
-    subgraph EXCEPTIONS["Exceptions"]
-        HTTP["HttpException"]
-        BAD["BadRequestException"]
-        UNAUTH["UnauthorizedException"]
-        NOTFOUND["NotFoundException"]
-        FORBIDDEN["ForbiddenException"]
-        METHOD["MethodNotAllowedException"]
-    end
-
-    INDEX --> APP
-    APP --> MIDQ
-    MIDQ --> ROUTER
-    ROUTER --> BASE
-    BASE --> AUTH
-    BASE --> USER
-    AUTH --> MBASE
-    USER --> MBASE
-    MBASE --> ELOQ
-    ELOQ --> UM
-    ELOQ --> TKREV
-    RES --> URES
-
-    style PUBLIC fill:#e3f2fd,stroke:#1976d2
-    style CORE fill:#fff3e0,stroke:#f57c00
-    style CONTROLLERS fill:#e8f5e9,stroke:#388e3c
-    style MODELS fill:#fce4ec,stroke:#c2185b
-    style MIDDLEWARES fill:#f3e5f5,stroke:#7b1fa2
-    style VIEWS fill:#e0f2f1,stroke:#00796b
-    style EXCEPTIONS fill:#ffebee,stroke:#d32f2f
+    INDEX --> ENV
+    INDEX --> DI
+    DI --> DB
+    DI --> APP
+    APP --> FILA
+    FILA --> ERR --> SEC --> RL --> CORS --> CSRF --> ROUTER
+    ROUTER --> LOGINRL
+    ROUTER --> JWT
+    ROUTER --> HANDLER
+    HANDLER --> AUTH
+    HANDLER --> USERCTRL
+    AUTH --> USERMODEL
+    AUTH --> USERRES
+    AUTH --> JWTSVC
+    AUTH --> TOKENMODEL
+    USERCTRL --> USERMODEL
+    USERCTRL --> USERRES
+    USERMODEL --> MYSQL
+    TOKENMODEL --> MYSQL
+    TOKENMODEL --> CACHE
+    RL --> CACHE
+    RL --> JWTSVC
+    JWT --> JWTSVC
+    CACHE --> ARRAY
+    CACHE --> APCU
+    CACHE --> REDIS
+    AUTH --> RESP
+    USERCTRL --> RESP
 ```
 
----
+## Ciclo da Requisição
 
-## 2. Diagrama de Fluxo de Requisição (Request Lifecycle)
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant Index as public/index.php
+    participant App as Application
+    participant Fila as MiddlewareQueue
+    participant Router as FastRouteRouter
+    participant MidRota as Middleware de rota
+    participant Controller
+    participant Model as Model / Resource
 
-Este diagrama ilustra o ciclo de vida de uma requisição HTTP no framework, demonstrando o padrão Onion/Pipeline de middlewares.
+    Cliente->>Index: HTTP request
+    Index->>Index: autoload + .env + container
+    Index->>App: setContainer(), loadRoutes(), loadMiddlewares()
+    Index->>App: run()
+    App->>App: createRequestFromGlobals()
+    App->>Fila: handle(request)
+    Fila->>Fila: ErrorHandler
+    Fila->>Fila: SecurityHeaders
+    Fila->>Fila: RateLimit
+    Fila->>Fila: Cors
+    Fila->>Fila: CsrfGuard
+    Fila->>Router: handle(request)
+    Router->>Router: dispatch FastRoute
+    alt rota com middleware
+        Router->>MidRota: JwtAuth ou rate_limit_login
+        MidRota->>Controller: request enriquecida
+    else rota sem middleware
+        Router->>Controller: request
+    end
+    Controller->>Model: consulta / mutação
+    Controller->>Model: transformação de saída
+    Model-->>Controller: dados
+    Controller-->>App: ResponseInterface JSON
+    App-->>Cliente: status + headers + body
+```
+
+## Ordem Real dos Middlewares Globais
 
 ```mermaid
 flowchart LR
-    subgraph CLIENT["Cliente"]
-        HTTP["Requisição HTTP"]
-    end
+    REQ["Request"]
+    ERR["1. ErrorHandlerMiddleware"]
+    SEC["2. SecurityHeadersMiddleware"]
+    RL["3. RateLimitMiddleware"]
+    CORS["4. CorsMiddleware"]
+    CSRF["5. CsrfGuardMiddleware"]
+    ROUTER["FastRouteRouter"]
+    RES["Response JSON"]
 
-    subgraph ENTRADA["Ponto de Entrada"]
-        BOOT["public/index.php<br/>Bootstrap"]
-    end
-
-    subgraph PIPELINE["Pipeline de Middlewares"]
-        direction TB
-        M1["MiddlewareQueue"]
-        M2["ErrorHandler"]
-        M3["SecurityHeaders"]
-        M4["Cors"]
-        M5["RateLimit"]
-        M6["JwtAuth"]
-    end
-
-    subgraph ROTEAMENTO["Roteamento"]
-        R1["Router<br/>FastRoute"]
-        R2["Match Route"]
-    end
-
-    subgraph EXECUCAO["Execução"]
-        C1["Controller"]
-        C2["Action Method"]
-        C3["Model/Service"]
-    end
-
-    subgraph RESPOSTA["Resposta"]
-        RESP["Response"]
-        JSON["JSON Response"]
-    end
-
-    HTTP --> BOOT
-    BOOT --> M1
-    M1 --> M2 --> M3 --> M4 --> M5 --> M6
-    M6 --> R1
-    R1 --> R2
-    R2 --> C1
-    C1 --> C2
-    C2 --> C3
-    C3 --> RESP
-    RESP --> JSON
-
-    style CLIENT fill:#bbdefb,stroke:#1565c0
-    style ENTRADA fill:#ffe0b2,stroke:#ef6c00
-    style PIPELINE fill:#e1bee7,stroke:#7b1fa2
-    style ROTEAMENTO fill:#c8e6c9,stroke:#2e7d32
-    style EXECUCAO fill:#ffccbc,stroke:#d84315
-    style RESPOSTA fill:#b2dfdb,stroke:#00695c
+    REQ --> ERR --> SEC --> RL --> CORS --> CSRF --> ROUTER --> RES
 ```
 
-### Descrição do Fluxo
+Observações:
 
-1. **Requisição HTTP**: O cliente envia uma requisição para o servidor
-2. **Bootstrap**: O arquivo `public/index.php` inicializa a aplicação
-3. **Pipeline de Middlewares**: A requisição passa por uma sequência de middlewares
-   - `ErrorHandler`: Tratamento de erros
-   - `SecurityHeaders`: Cabeçalhos de segurança
-   - `Cors`: Controle de acesso cruzado
-   - `RateLimit`: Limite de requisições
-   - `JwtAuth`: Autenticação JWT
-4. **Roteamento**: O Router identifica a rota correspondente
-5. **Controller**: O método adequado do controller é executado
-6. **Model**: Dados são manipulados através dos models
-7. **Response**: A resposta é retornada ao cliente
+- `JwtAuthMiddleware` não é global. Ele entra como middleware de rota.
+- `POST /api/auth/login` usa o alias de container `rate_limit_login` como middleware de rota.
+- `RateLimitMiddleware` usa `sub` do JWT válido como identificador preferencial e faz fallback para IP.
 
----
-
-## 3. Diagrama de Hierarquia de Classes
-
-### 3.1 Hierarquia de Controllers
+## Rotas Implementadas
 
 ```mermaid
-classDiagram
-    class Controller {
-        +request: Request
-        +response: Response
-        +json(data, statusCode)
-        +render(view, data)
-    }
+flowchart TB
+    subgraph Auth["Autenticação"]
+        L["POST /api/auth/login<br/>middleware: rate_limit_login"]
+        O["POST /api/auth/logout<br/>middleware: JwtAuthMiddleware"]
+        M["GET /api/auth/me<br/>middleware: JwtAuthMiddleware"]
+    end
 
-    class AuthController {
-        +login()
-        +logout()
-        +me()
-    }
-
-    class UserController {
-        +index()
-        +show(id)
-        +store()
-        +update(id)
-        +destroy(id)
-    }
-
-    Controller <|-- AuthController
-    Controller <|-- UserController
+    subgraph Usuarios["Usuários"]
+        I["GET /api/usuarios<br/>middleware: JwtAuthMiddleware"]
+        S["GET /api/usuarios/{id}<br/>middleware: JwtAuthMiddleware"]
+        C["POST /api/usuarios<br/>middleware: JwtAuthMiddleware"]
+        U["PUT /api/usuarios/{id}<br/>middleware: JwtAuthMiddleware"]
+        D["DELETE /api/usuarios/{id}<br/>middleware: JwtAuthMiddleware"]
+    end
 ```
 
-### 3.2 Hierarquia de Models
+## Autenticação e Revogação
 
 ```mermaid
-classDiagram
-    class EloquentModel {
-        +timestamps: bool
-        +hidden: array
-        +serializeDate(date)
-    }
+flowchart TD
+    LOGIN["POST /api/auth/login"]
+    COOKIE["Set-Cookie: token=...; HttpOnly; SameSite=Strict"]
+    JWTMW["JwtAuthMiddleware"]
+    JWTSVC["JwtService"]
+    BLACKLIST["TokenRevogado"]
+    LOGOUT["POST /api/auth/logout"]
+    CLEAR["Set-Cookie com Max-Age=0"]
 
-    class UserModel {
-        +table: string = 'usuarios'
-    }
-
-    class TokenRevogado {
-        +table: string = 'tokens_revogados'
-        +isRevogado(token)
-        +revogar(token)
-    }
-
-    EloquentModel <|-- UserModel
-    EloquentModel <|-- TokenRevogado
+    LOGIN --> COOKIE
+    COOKIE --> JWTMW
+    JWTMW --> JWTSVC
+    JWTMW --> BLACKLIST
+    LOGOUT --> BLACKLIST
+    LOGOUT --> CLEAR
 ```
 
-### 3.3 Hierarquia de Exceptions
+Observações:
+
+- O token é aceito exclusivamente do cookie `token`.
+- O logout persiste o `jti` em `tokens_revogados` e também o cacheia.
+- `Secure` no cookie é habilitado em HTTPS, em produção ou via `X-Forwarded-Proto=https` quando o proxy é confiável.
+
+## Persistência e Cache
 
 ```mermaid
-classDiagram
-    class HttpException {
-        +message: string
-        +statusCode: int
-        +__construct(message, statusCode)
-    }
+flowchart LR
+    CONTAINER["config/container.php"]
+    STORE["KeyValueStoreInterface"]
+    ARRAY["ArrayKeyValueStore"]
+    APCU["ApcuKeyValueStore"]
+    REDIS["RedisKeyValueStore"]
+    DB["MySQL / MariaDB"]
 
-    class BadRequestException {
-        +__construct(message = 'Bad Request')
-    }
-
-    class UnauthorizedException {
-        +__construct(message = 'Unauthorized')
-    }
-
-    class ForbiddenException {
-        +__construct(message = 'Forbidden')
-    }
-
-    class NotFoundException {
-        +__construct(message = 'Not Found')
-    }
-
-    class MethodNotAllowedException {
-        +__construct(message = 'Method Not Allowed')
-    }
-
-    HttpException <|-- BadRequestException
-    HttpException <|-- UnauthorizedException
-    HttpException <|-- ForbiddenException
-    HttpException <|-- NotFoundException
-    HttpException <|-- MethodNotAllowedException
+    CONTAINER --> STORE
+    STORE --> ARRAY
+    STORE --> APCU
+    STORE --> REDIS
+    CONTAINER --> DB
 ```
 
-### 3.4 Hierarquia de Resources (Views)
+Regras atuais do container:
 
-```mermaid
-classDiagram
-    class Resource {
-        +toArray(): array
-        +collection(items): array
-    }
-
-    class UserResource {
-        +id: int
-        +nome: string
-        +email: string
-        +toArray()
-    }
-
-    Resource <|-- UserResource
-```
-
----
-
-## 4. Diagrama de Estrutura de Diretórios
-
-Este diagrama apresenta a organização completa dos diretórios e arquivos do framework Parrot PHP.
-
-```mermaid
-graph TD
-    ROOT("parrot-php/")
-
-    CONFIG("config/")
-    CONTAINER("container.php")
-    MIDDLEWARES("middlewares.php")
-    ROUTES("routes.php")
-
-    PUBLIC("public/")
-    INDEX("index.php")
-
-    SRC("src/")
-
-    CORE("Core/")
-    APP("Application.php")
-    REQUEST("Request.php")
-    RESPONSE("Response.php")
-    ROUTER("Router.php")
-    FASTROUTER("FastRouteRouter.php")
-    DBCAPS("DatabaseCapsule.php")
-    MIDQ("MiddlewareQueue.php")
-
-    CONTROLLERS("Controllers/")
-    BASEC("Controller.php")
-    AUTH("AuthController.php")
-    USER("UserController.php")
-
-    MODELS("Models/")
-    ELOQ("EloquentModel.php")
-    USERM("UserModel.php")
-    TKREV("TokenRevogado.php")
-
-    MIDDLEWARES("Middlewares/")
-    ERR("ErrorHandlerMiddleware.php")
-    CORS("CorsMiddleware.php")
-    JWT("JwtAuthMiddleware.php")
-    RATE("RateLimitMiddleware.php")
-    SEC("SecurityHeadersMiddleware.php")
-
-    EXCEPTIONS("Exceptions/")
-    HTTP("HttpException.php")
-    BAD("BadRequestException.php")
-    UNAUTH("UnauthorizedException.php")
-    NOTFOUND("NotFoundException.php")
-    FORBIDDEN("ForbiddenException.php")
-    METHOD("MethodNotAllowedException.php")
-
-    VIEWS("Views/")
-    RES("Resource.php")
-    URES("UserResource.php")
-
-    DATABASE("database/")
-    MIGRATIONS("migrations/")
-    SEED("seed/")
-    SCRIPTS("scripts/")
-
-    TESTS("tests/")
-    BOOTSTRAP("bootstrap.php")
-    TESTCASE("TestCase.php")
-    AUTHTEST("AuthTest.php")
-    USERCRUD("UserCrudTest.php")
-
-    DOCS("docs/")
-    INSTALACAO("instalacao.md")
-
-    ROOT --> CONFIG
-    ROOT --> PUBLIC
-    ROOT --> SRC
-    ROOT --> DATABASE
-    ROOT --> TESTS
-    ROOT --> DOCS
-
-    CONFIG --> CONTAINER
-    CONFIG --> MIDDLEWARES
-    CONFIG --> ROUTES
-
-    PUBLIC --> INDEX
-
-    SRC --> CORE
-    SRC --> CONTROLLERS
-    SRC --> MODELS
-    SRC --> MIDDLEWARES
-    SRC --> EXCEPTIONS
-    SRC --> VIEWS
-
-    CORE --> APP
-    CORE --> REQUEST
-    CORE --> RESPONSE
-    CORE --> ROUTER
-    CORE --> FASTROUTER
-    CORE --> DBCAPS
-    CORE --> MIDQ
-
-    CONTROLLERS --> BASEC
-    CONTROLLERS --> AUTH
-    CONTROLLERS --> USER
-
-    MODELS --> MODEL
-    MODELS --> ELOQ
-    MODELS --> USERM
-    MODELS --> TKREV
-
-    MIDDLEWARES --> ERR
-    MIDDLEWARES --> CORS
-    MIDDLEWARES --> JWT
-    MIDDLEWARES --> RATE
-    MIDDLEWARES --> SEC
-
-    EXCEPTIONS --> HTTP
-    EXCEPTIONS --> BAD
-    EXCEPTIONS --> UNAUTH
-    EXCEPTIONS --> NOTFOUND
-    EXCEPTIONS --> FORBIDDEN
-    EXCEPTIONS --> METHOD
-
-    VIEWS --> RES
-    VIEWS --> URES
-
-    DATABASE --> MIGRATIONS
-    DATABASE --> SEED
-    DATABASE --> SCRIPTS
-
-    TESTS --> BOOTSTRAP
-    TESTS --> TESTCASE
-    TESTS --> AUTHTEST
-    TESTS --> USERCRUD
-
-    DOCS --> INSTALACAO
-```
-
----
-
-## 5. Resumo dos Componentes
-
-| Componente | Descrição | Localização |
-|------------|-----------|-------------|
-| **Application** | Classe principal que coordena todos os componentes | `src/Core/Application.php` |
-| **Router** | Sistema de roteamento baseado em FastRoute | `src/Core/FastRouteRouter.php` |
-| **DatabaseCapsule** | Gerenciador de conexão com banco de dados | `src/Core/DatabaseCapsule.php` |
-| **MiddlewareQueue** | Fila de execução de middlewares | `src/Core/MiddlewareQueue.php` |
-| **Controller** | Classe base para todos os controllers | `src/Controllers/Controller.php` |
-| **EloquentModel** | Implementação do padrão Active Record | `src/Models/EloquentModel.php` |
-| **HttpException** | Classe base para exceções HTTP | `src/Exceptions/HttpException.php` |
-| **Resource** | Classe base para transformação de dados | `src/Views/Resource.php` |
-
----
-
-## 6. Padrões de Projeto Utilizados
-
-O framework Parrot PHP utiliza os seguintes padrões de projeto:
-
-- **MVC (Model-View-Controller)**: Separação clara entre dados, lógica de negócio e interface
-- **Active Record**: Implementado no EloquentModel para manipulação de dados
-- **Pipeline/Onion Pattern**: Para o processamento de middlewares
-- **Dependency Injection**: Através do container de serviços
-- **Factory**: Para criação de exceptions específicas
-
----
-
-*Documentação gerada para o Framework Parrot PHP*
+- `APP_ENV=testing` força `ArrayKeyValueStore`.
+- Em desenvolvimento, `CACHE_STORE=auto` pode cair para Redis, APCu ou array.
+- Em produção, o container rejeita `array`, `memory` e `apcu`.
+- Em produção, Redis é exigido para rate limit e blacklist distribuídos.

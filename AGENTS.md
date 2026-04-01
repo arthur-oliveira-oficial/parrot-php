@@ -1,203 +1,217 @@
-# **System Context and AI Instructions**
+# AGENTS.md
 
-You are a Senior Software Engineer specializing in PHP 8.4, Web Application Security (OWASP), and RESTful API Architecture.
+## Contexto
 
-Your task is to act as the lead developer and code assistant for the custom framework **"Parrot PHP"**.
+Você está trabalhando no framework proprietário **Parrot PHP**, um micro-framework REST em PHP 8.4 com:
 
-## **About the Framework (Parrot PHP)**
+- `nikic/fast-route` para roteamento
+- `php-di/php-di` para injeção de dependências
+- `nyholm/psr7` e PSR-7/PSR-15 para request/response e middlewares
+- `illuminate/database` como ORM principal
+- JWT manual com cookie HttpOnly
+- testes integrados contra **MySQL/MariaDB**, não SQLite
 
-This is a proprietary, high-performance PHP micro-framework built to run natively with **FrankenPHP (Classic Mode)** or **Caddy Server**.
+O projeto é uma API JSON. O código de referência é o próprio repositório atual. Se alguma documentação divergir do código, **o código vence**.
 
-It is **not** Laravel, Symfony, or Slim, although it draws inspiration from modern best practices.
+## Arquitetura Atual
 
-**Tech Stack:**
+Fluxo principal:
 
-* **Language:** PHP 8.4+ (Mandatory use of strict typing, union types, etc.)
-* **Server:** Caddy / FrankenPHP (Classic Mode)  
-* **Database/ORM:** `illuminate/database` (Standalone Laravel Eloquent ORM)
-* **Testing Database:** MariaDB / MySQL strictly. SQLite is NO LONGER USED. Tests run against a live MariaDB test database (`parrot_test`) to ensure a faithful production representation.
-* **Dependency Injection:** `php-di/php-di` (Configured in `config/container.php`)
-* **Routing:** `nikic/fast-route`
-* **HTTP Messages/PSR-7:** `nyholm/psr7` and standard PSR interfaces (`psr/http-message`, `psr/http-server-middleware`, `psr/http-server-handler`, etc.)
-* **Authentication:** JWT (JSON Web Tokens), implemented manually without third-party JWT libraries to ensure maximum control and performance. Tokens are stateless but include revocation checking via a blacklist (`TokenRevogado`). Tokens are managed exclusively via HttpOnly cookies (to prevent XSS) and never sent directly via headers.
-* **Architecture:** Simplified MVC for APIs (Router -> Middleware -> Controller -> Model -> Resource/View -> Response).
+`public/index.php` -> `App\Core\Application` -> middlewares globais -> `App\Core\FastRouteRouter` -> middleware de rota -> controller -> model -> resource/view -> resposta JSON
 
-## **Absolute Coding Rules (DO NOT IGNORE)**
+Componentes ativos:
 
-1. **Mandatory Strict Typing:** Every PHP file MUST start with `declare(strict_types=1);`.
-2. **Code Language (pt-BR):** All generated source code (variable names, functions, methods, classes, comments, error messages, and API responses) MUST be written entirely in Brazilian Portuguese (pt-BR), maintaining cohesion with the application's domain.  
-3. **No Raw SQL:** All database interactions MUST use the Eloquent ORM or predefined PDO bindings. Using manual raw SQL queries is strictly forbidden to prevent SQL Injection.
-4. **Standardized Responses:** The API is strictly JSON. Always return formatted data using the classes in the `src/Views/` folder (Resources) or using the `App\Core\Response` helper methods.
-5. **Error Handling:** NEVER return empty try/catch blocks. Exceptions must be thrown using the framework's classes (`Exceptions/NotFoundException.php`, `BadRequestException.php`, `UnauthorizedException.php`, etc.). The `ErrorHandlerMiddleware` will catch and format them to JSON.
-6. **Dependency Injection:** Instantiate classes and dependencies cleanly. The framework has a DI container configured in `config/container.php`. Controllers and middlewares should receive their dependencies in the constructor.
-7. **Testing:** Run tests using `./vendor/bin/phpunit`. Tests must expect strictly MariaDB/MySQL environment variables (`DB_DRIVER=mysql`).
-8. **OWASP Security:**
-   * Strictly validate all input from requests.
-   * Protected routes MUST use `JwtAuthMiddleware`.
-   * Never trust client input.
-   * Passwords MUST be hashed using `PASSWORD_ARGON2ID`.
+- `config/container.php`: definições do PHP-DI e configurações vindas do `.env`
+- `config/routes.php`: rotas da API
+- `config/middlewares.php`: middlewares globais
+- `src/Controllers`: lógica HTTP
+- `src/Models`: acesso a dados via Eloquent
+- `src/Views`: formatação de resposta
+- `src/Middlewares`: segurança, CORS, autenticação, rate limit e tratamento de erro
+- `database/migrations`: schema
+- `database/seed`: seed inicial
+- `tests`: testes de integração e unidade
 
-## **Directory Structure**
+Domínio hoje implementado:
 
-When creating or modifying files, respect this structure:
+- autenticação: `AuthController`
+- usuários: `UserController`, `UserModel`, `UserResource`
+- blacklist de JWT: `TokenRevogado`
+- cache de suporte: `ArrayKeyValueStore`, `ApcuKeyValueStore`, `RedisKeyValueStore`
 
-* `/config` -> Route files (`routes.php`), and DI container (`container.php`).
-* `/database/migrations` -> Table creation scripts.
-* `/database/scripts` -> CLI Scripts for db migration and seeding (`migrate.php` / `seed.php`).
-* `/src/Controllers` -> Request/response logic. Extends `Controller`.
-* `/src/Core` -> The core of the framework (Application, Router, Request, Response). *Do not modify unless requested.*
-* `/src/Exceptions` -> Custom HTTP exceptions (e.g. `NotFoundException`, `BadRequestException`).
-* `/src/Middlewares` -> Request interceptors (Cors, RateLimit, JwtAuth, SecurityHeaders, ErrorHandler).
-* `/src/Models` -> Eloquent classes (extends `EloquentModel` which extends `Illuminate\Database\Eloquent\Model`).
-* `/src/Views` -> Resources for data transformation (extends `Resource`).
-* `/tests` -> Unit and integration tests (PHPUnit).
+## Regras Mandatórias
 
-## **Code Standards (Few-Shot Examples)**
+1. Todo arquivo PHP novo deve iniciar com `declare(strict_types=1);`.
+2. Ao editar arquivos antigos sem `strict_types`, preserve o comportamento e adicione `strict_types` quando a mudança for segura.
+3. Todo código novo deve usar **pt-BR** em nomes de variáveis, métodos, comentários, mensagens e payloads JSON.
+4. A API deve continuar retornando **JSON padronizado** via `App\Core\Response` ou classes de `src/Views`.
+5. Controllers e middlewares devem receber dependências por construtor e serem resolvidos pelo container.
+6. Em código de aplicação, use **Eloquent**. Não introduza SQL raw em controllers, models ativos ou serviços HTTP.
+7. Senhas devem usar `PASSWORD_ARGON2ID`.
+8. Rotas protegidas devem usar `JwtAuthMiddleware`.
+9. Nunca confiar em input do cliente. Validar body, query params, ids de rota e permissões.
+10. Não reintroduza SQLite em testes, scripts ou documentação operacional.
 
-### **1. Routing (`config/routes.php`)**
+## Convenções Reais do Projeto
+
+### Banco e persistência
+
+- O model ativo base é `src/Models/EloquentModel.php`.
+- `src/Models/Model.php` é um legado em PDO puro. Não use esse model como base para novos recursos.
+- Exceções limitadas: infraestrutura de teste e seed ainda usam PDO diretamente:
+  - `tests/TestCase.php`
+  - `database/seed/001_admin.php`
+- Fora desses pontos de infraestrutura, prefira sempre Eloquent.
+
+### Autenticação
+
+- O login gera JWT manualmente em `AuthController`.
+- O token é entregue em cookie `token` com `HttpOnly` e `SameSite=Strict`.
+- O middleware `JwtAuthMiddleware` aceita o token **exclusivamente do cookie**.
+- O logout também revoga o token com base no cookie.
+- Existe blacklist persistida em `tokens_revogados` e cacheada por `TokenRevogado`.
+- Não implemente autenticação principal via header `Authorization` em novas rotas protegidas.
+
+### Rate limit
+
+- O projeto usa `RateLimitMiddleware`.
+- Em usuários autenticados, o identificador preferencial é o `sub` do JWT validado.
+- Sem JWT válido, o fallback é IP.
+- Login usa rate limit específico via alias `'rate_limit_login'` definido no container.
+
+### Respostas
+
+- Use `Resource` quando houver transformação de payload.
+- Use `Response::json()`, `Response::error()`, `Response::unauthorized()` etc. para respostas simples.
+- `UserResource` remove `senha` das respostas. Nunca exponha esse campo.
+
+### Controle de acesso
+
+- Siga o padrão já usado em `UserController`:
+  - admin acessa recursos administrativos
+  - usuário comum acessa apenas o próprio recurso quando aplicável
+- Proteja contra IDOR verificando o `user_id` e o `user_tipo` presentes na request.
+
+### Validação
+
+- O controller base tem um validador simples com regras como:
+  - `required`
+  - `email`
+  - `integer`
+  - `strong_password`
+  - `min:N`
+  - `max:N`
+- Se a validação do recurso seguir esse padrão, reutilize-o antes de criar algo novo.
+
+## Estrutura de Diretórios
+
+- `public/`: front controller
+- `config/`: container, rotas e middlewares
+- `src/Core/`: kernel HTTP e infraestrutura central
+- `src/Controllers/`: endpoints
+- `src/Middlewares/`: pipeline HTTP
+- `src/Models/`: models Eloquent e suporte de persistência
+- `src/Views/`: resources/transformers
+- `src/Exceptions/`: exceções HTTP
+- `src/Cache/`: armazenamento abstrato para cache e rate limit
+- `database/migrations/`: migrations
+- `database/seed/`: seeds
+- `database/scripts/`: runners CLI de migration/seed
+- `tests/`: suíte PHPUnit
+- `docs/`: documentação auxiliar, potencialmente desatualizada
+
+## Arquivos Sensíveis
+
+Evite modificar sem necessidade explícita:
+
+- `src/Core/Application.php`
+- `src/Core/FastRouteRouter.php`
+- `src/Core/MiddlewareQueue.php`
+- `public/index.php`
+
+Se precisar alterar esses arquivos, mantenha compatibilidade com PSR-7/PSR-15 e com o bootstrap atual.
+
+## Padrões para Novos Recursos
+
+### Nova rota
+
+Registrar em `config/routes.php` no formato:
 
 ```php
-use App\Controllers\ProdutoController;
-use App\Middlewares\JwtAuthMiddleware;
-
-return [
-    'GET /api/produtos' => [ProdutoController::class, 'index'],
-    // Protected route (JWT Middleware added directly to the route definition)
-    'POST /api/produtos' => [ProdutoController::class, 'store', JwtAuthMiddleware::class],
-];
+'GET /api/recurso' => [MeuController::class, 'index'],
+'POST /api/recurso' => [MeuController::class, 'store', JwtAuthMiddleware::class],
 ```
 
-### **2. Models (Eloquent) (`src/Models/ProdutoModel.php`)**
+Se for endpoint sensível e público, considere alias de rate limit específico no container, como já ocorre no login.
 
-```php
-declare(strict_types=1);
+### Novo controller
 
-namespace App\Models;
+- Estender `App\Controllers\Controller`
+- Receber model/resource no construtor
+- Ler body via `getBody()`
+- Validar input
+- Retornar `ResponseInterface`
+- Preferir `Resource` para payloads
 
-class ProdutoModel extends EloquentModel
-{  
-    protected $table = 'produtos';
-    protected $fillable = ['nome', 'preco', 'ativo'];
-      
-    // PHP 8.4 native Eloquent type casting  
-    protected $casts = [
-        'preco' => 'float',
-        'ativo' => 'boolean',
-    ];
-}
+### Novo model
+
+- Estender `EloquentModel`
+- Definir `$table`, `$fillable`, `$casts`
+- Usar nomes e colunas em pt-BR quando fizer sentido com o domínio
+- Evitar mass assignment inseguro
+
+### Nova resource
+
+- Estender `App\Views\Resource`
+- Remover dados sensíveis
+- Padronizar `item()`, `collection()`, `created()`, `updated()`, `deleted()`
+
+## Segurança
+
+Checklist mínimo antes de concluir qualquer alteração:
+
+1. A rota exige `JwtAuthMiddleware` quando deveria exigir?
+2. Há verificação de autorização além da autenticação?
+3. A entrada foi validada e tipada?
+4. Não há SQL raw novo em código de aplicação?
+5. Senhas usam Argon2id?
+6. O JWT continua trafegando por cookie HttpOnly?
+7. Nenhum campo sensível está sendo retornado pela API?
+8. O rate limit precisa de ajuste para o novo endpoint?
+
+## Testes
+
+Comandos padrão:
+
+```bash
+./vendor/bin/phpunit
+./vendor/bin/phpunit --filter NomeDoTeste
 ```
 
-### **3. Resources/Views (`src/Views/ProdutoResource.php`)**
+Premissas reais da suíte:
 
-*The View layer is used to clean sensitive data and format the output.*
+- `phpunit.xml` força `APP_ENV=testing`
+- `DB_DRIVER=mysql`
+- banco de teste esperado: `parrot_test`
+- `tests/TestCase.php` cria o banco se necessário e recria tabelas a cada teste
 
-```php
-declare(strict_types=1);
+Não adapte testes para SQLite.
 
-namespace App\Views;
+## Estado Atual Que Deve Ser Respeitado
 
-use App\Core\Response;
-use Psr\Http\Message\ResponseInterface;
+- Existem arquivos ainda sem `declare(strict_types=1);` em `config/`, parte de `src/Core/`, alguns middlewares, `Resource`, `Controller` base e scripts de banco.
+- Ao tocar nesses arquivos, prefira deixá-los melhores do que encontrou, sem refactors desnecessários.
+- Há documentação em `docs/` com pontos históricos e alguns trechos divergentes do código atual.
+- O seed do admin usa PDO preparado. Não propague esse padrão para a camada HTTP.
 
-class ProdutoResource extends Resource  
-{  
-    public function item(array $produto): ResponseInterface
-    {
-        return Response::json([
-            'id' => $produto['id'],
-            'nome' => $produto['nome'],
-            'preco_formatado' => 'R$ ' . number_format((float) $produto['preco'], 2, ',', '.'),
-            'criado_em' => $produto['created_at'],
-        ]);
-    }
+## Diretriz de Edição
 
-    public function collection(array $produtos): ResponseInterface
-    {
-        $data = array_map(function($produto) {
-            return [
-                'id' => $produto['id'],
-                'nome' => $produto['nome'],
-                'preco' => $produto['preco'],
-            ];
-        }, $produtos);
+Ao receber uma solicitação:
 
-        return Response::json(['data' => $data]);
-    }
-}
-```
+- primeiro confirme como o código atual implementa o fluxo
+- depois siga o padrão já existente, não um padrão imaginado
+- mantenha compatibilidade com o container, rotas e testes atuais
+- preserve pt-BR
+- preserve a arquitetura enxuta do framework
 
-### **4. Controllers (`src/Controllers/ProdutoController.php`)**
-
-```php
-declare(strict_types=1);
-
-namespace App\Controllers;
-
-use App\Models\ProdutoModel;
-use App\Views\ProdutoResource;
-use App\Exceptions\NotFoundException;
-use App\Exceptions\BadRequestException;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-
-class ProdutoController extends Controller  
-{  
-    public function __construct(
-        protected ProdutoModel $model,
-        protected ProdutoResource $resource
-    ) {}
-
-    public function index(ServerRequestInterface $request): ResponseInterface
-    {  
-        $produtos = $this->model->where('ativo', true)->get()->toArray();
-        return $this->resource->collection($produtos);
-    }
-
-    public function store(ServerRequestInterface $request): ResponseInterface
-    {  
-        $data = $this->getBody($request);
-
-        $errors = $this->validate($data, [
-            'nome' => 'required',
-            'preco' => 'required',
-        ]);
-
-        if (!empty($errors)) {
-            throw new BadRequestException('Nome e preço são obrigatórios.');  
-        }
-
-        $produto = $this->model->create([
-            'nome' => htmlspecialchars((string) $data['nome'], ENT_QUOTES, 'UTF-8'), // XSS Mitigation
-            'preco' => (float) $data['preco'],
-            'ativo' => $data['ativo'] ?? true,
-        ]);
-
-        return $this->resource->item($produto->toArray())->withStatus(201);
-    }  
-      
-    public function show(ServerRequestInterface $request, array $args): ResponseInterface
-    {  
-        $produto = $this->model->find((int) $args['id']);
-          
-        if (!$produto) {
-            throw new NotFoundException('Produto não encontrado.');  
-        }  
-          
-        return $this->resource->item($produto->toArray());
-    }  
-}
-```
-
-## **Security Checklist (OWASP) for New Features**
-
-Always validate this checklist before generating code:
-
-1. **Broken Access Control:** Does the created route require JWT (`JwtAuthMiddleware`)? Does the logged-in user (via request attribute) have permission to access the requested resource (ID)?
-2. **Cryptographic Failures:** Passwords MUST be hashed with `password_hash($pass, PASSWORD_ARGON2ID)`.
-3. **Injection:** NEVER concatenate variables in queries. Always use Eloquent methods (`where()`, `find()`, etc).
-4. **Insecure Design:** Apply Rate Limiting (already available in the framework) on sensitive routes like login and password recovery.  
-5. **Security Misconfiguration:** The `.env` file should never be committed. Use `.env.example`. In production, display_errors must be OFF (handled by `ErrorHandlerMiddleware`).
-6. **JWT & Cookies:** Tokens are sent securely via HttpOnly cookies to mitigate XSS attacks. Never accept tokens via headers directly in an insecure manner if HttpOnly cookies can be used instead.
-7. **Strict Database Driver:** Always assume a strict MySQL/MariaDB database driver and structure for tests (`php_unit.xml`) and local development. Never attempt to configure or test with SQLite.
-
-When receiving a user request from now on, strictly act as this expert and follow this architectural framework.
+Se houver ambiguidade entre o `AGENTS.md` e o repositório, ajuste sua decisão ao comportamento efetivo do código.

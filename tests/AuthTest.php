@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use App\Controllers\AuthController;
+use App\Core\JwtService;
+use App\Views\UserResource;
+use Nyholm\Psr7\Factory\Psr17Factory;
+
 class AuthTest extends TestCase
 {
     public function testLoginSucesso(): void
@@ -111,6 +116,32 @@ class AuthTest extends TestCase
 
         $meResponse = $this->call('GET', '/api/auth/me', [], [], $token);
         $this->assertEquals(401, $meResponse->getStatusCode());
+    }
+
+    public function testLogoutFalhaQuandoRevogacaoNaoPodeSerPersistida(): void
+    {
+        $controller = new class(
+            new \App\Models\UserModel(),
+            new UserResource(),
+            new JwtService('segredo-teste', 3600, 'http://localhost', 'parrot-api')
+        ) extends AuthController {
+            protected function revogarTokenAtual(array $payload): void
+            {
+                throw new \RuntimeException('falha simulada');
+            }
+        };
+
+        $factory = new Psr17Factory();
+        $request = $factory->createServerRequest('POST', '/api/auth/logout')
+            ->withAttribute('jwt_payload', [
+                'jti' => 'token-teste',
+                'exp' => time() + 3600,
+            ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('falha simulada');
+
+        $controller->logout($request);
     }
 
     public function testMe(): void

@@ -22,6 +22,8 @@ abstract class TestCase extends PHPUnitTestCase
     {
         parent::setUp();
 
+        $this->restaurarVariaveisDeAmbienteBase();
+
         // Carrega variáveis de ambiente
         $dotenv = \Dotenv\Dotenv::createImmutable(dirname(__DIR__));
         $dotenv->load();
@@ -48,6 +50,55 @@ abstract class TestCase extends PHPUnitTestCase
         TokenRevogado::limparCache();
 
         $this->resetDatabase();
+    }
+
+    protected function restaurarVariaveisDeAmbienteBase(): void
+    {
+        $variaveis = [
+            'APP_ENV',
+            'APP_DEBUG',
+            'APP_URL',
+            'DB_DRIVER',
+            'DB_HOST',
+            'DB_PORT',
+            'DB_NAME',
+            'DB_DATABASE',
+            'DB_USER',
+            'DB_PASSWORD',
+            'JWT_SECRET',
+            'JWT_EXPIRY',
+            'JWT_ISSUER',
+            'JWT_AUDIENCE',
+            'ADMIN_NAME',
+            'ADMIN_EMAIL',
+            'ADMIN_PASSWORD',
+            'RATE_LIMIT_MAX_REQUESTS',
+            'RATE_LIMIT_WINDOW_SECONDS',
+            'RATE_LIMIT_LOGIN_MAX_REQUESTS',
+            'RATE_LIMIT_LOGIN_WINDOW_SECONDS',
+            'CACHE_STORE',
+            'CACHE_PREFIX',
+            'REDIS_SCHEME',
+            'REDIS_HOST',
+            'REDIS_PORT',
+            'REDIS_DATABASE',
+            'REDIS_PASSWORD',
+            'REDIS_TIMEOUT',
+            'TRUSTED_PROXY_IPS',
+            'CORS_ALLOWED_ORIGINS',
+        ];
+
+        foreach ($variaveis as $chave) {
+            $valor = getenv($chave);
+
+            if ($valor === false) {
+                unset($_ENV[$chave], $_SERVER[$chave]);
+                continue;
+            }
+
+            $_ENV[$chave] = $valor;
+            $_SERVER[$chave] = $valor;
+        }
     }
 
     /**
@@ -142,6 +193,11 @@ abstract class TestCase extends PHPUnitTestCase
 
         // Cria headers
         $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+
+        if (!in_array(strtoupper($method), ['GET', 'HEAD', 'OPTIONS'], true) && !isset($headers['Origin']) && !isset($headers['Referer'])) {
+            $appUrl = $_ENV['APP_URL'] ?? $_SERVER['APP_URL'] ?? 'http://localhost';
+            $headers['Referer'] = rtrim((string) $appUrl, '/') . '/teste';
+        }
 
         // Trata os ServerParams vindos do array associativo headers (no teste de RateLimit é passado SERVER_PARAMS lá)
         // Isso é um hack porque o array headers nos testes às vezes é usado para injetar params de server como REMOTE_ADDR

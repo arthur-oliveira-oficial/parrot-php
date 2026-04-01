@@ -2,11 +2,9 @@
     frankenphp
 }
 
-# Configura o servidor local para a porta 8080
+# Exemplo mínimo de execução local.
+# Em produção, publique atrás de HTTPS e injete as variáveis de ambiente pelo orquestrador.
 :8080 {
-    # Define a pasta public como a raiz do servidor
     root * public/
-
-    # Habilita o servidor PHP no modo clássico
     php_server
 }

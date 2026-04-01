@@ -126,7 +126,7 @@ class AuthController extends Controller
         $payload = $request->getAttribute('jwt_payload');
 
         if (is_array($payload) && isset($payload['jti'], $payload['exp'])) {
-            TokenRevogado::revogar((string) $payload['jti'], (int) $payload['exp']);
+            $this->revogarTokenAtual($payload);
         }
 
         // Limpa tokens expirados da blacklist
@@ -140,6 +140,15 @@ class AuthController extends Controller
         );
 
         return $response;
+    }
+
+    protected function revogarTokenAtual(array $payload): void
+    {
+        $revogadoComSucesso = TokenRevogado::revogar((string) $payload['jti'], (int) $payload['exp']);
+
+        if (!$revogadoComSucesso) {
+            throw new \RuntimeException('Não foi possível revogar o token atual com segurança.');
+        }
     }
 
     /**

@@ -22,6 +22,14 @@ class RedisKeyValueStore implements KeyValueStoreInterface
             return $default;
         }
 
+        if ($value === 'true') {
+            return true;
+        }
+
+        if ($value === 'false') {
+            return false;
+        }
+
         $decoded = json_decode($value, true);
 
         return json_last_error() === JSON_ERROR_NONE ? $decoded : $value;
@@ -29,9 +37,13 @@ class RedisKeyValueStore implements KeyValueStoreInterface
 
     public function set(string $key, mixed $value, int $ttlSeconds = 0): bool
     {
-        $payload = is_scalar($value) || $value === null
-            ? (string) $value
-            : json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (is_bool($value)) {
+            $payload = $value ? 'true' : 'false';
+        } elseif (is_scalar($value) || $value === null) {
+            $payload = (string) $value;
+        } else {
+            $payload = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
 
         $result = $ttlSeconds > 0
             ? $this->client->setex($this->prefix($key), $ttlSeconds, $payload)

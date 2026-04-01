@@ -27,6 +27,19 @@ class ProductionReadinessTest extends TestCase
         $this->assertInstanceOf(ArrayKeyValueStore::class, $store);
     }
 
+    public function testProducaoExigeCacheDistribuido(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('não é permitido em produção');
+
+        $container = $this->criarContainerComEnv([
+            'APP_ENV' => 'production',
+            'CACHE_STORE' => 'array',
+        ]);
+
+        $container->get(KeyValueStoreInterface::class);
+    }
+
     public function testNaoConfiaEmForwardedProtoSemProxyConfiavel(): void
     {
         $response = $this->call('POST', '/api/auth/login', [
@@ -59,6 +72,21 @@ class ProductionReadinessTest extends TestCase
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertStringContainsString('Secure', $response->getHeaderLine('Set-Cookie'));
         $this->assertSame('max-age=31536000; includeSubDomains', $response->getHeaderLine('Strict-Transport-Security'));
+    }
+
+    public function testBloqueiaEscritaAutenticadaComOrigemExterna(): void
+    {
+        $token = $this->getJwtToken('admin@parrot.com', 'admin123');
+
+        $response = $this->call('POST', '/api/usuarios', [
+            'nome' => 'Tentativa Externa',
+            'email' => 'externo@parrot.com',
+            'senha' => 'senhaForte123'
+        ], [
+            'Origin' => 'https://malicioso.exemplo',
+        ], $token);
+
+        $this->assertSame(403, $response->getStatusCode());
     }
 
     private function recriarAplicacaoComEnv(array $sobrescritas): void

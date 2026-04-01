@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * ===========================================
  * Configuração de Middlewares Globais
@@ -19,6 +21,7 @@
  */
 
 use App\Middlewares\CorsMiddleware;
+use App\Middlewares\CsrfGuardMiddleware;
 use App\Middlewares\RateLimitMiddleware;
 use App\Middlewares\SecurityHeadersMiddleware;
 use App\Middlewares\ErrorHandlerMiddleware;
@@ -45,4 +48,8 @@ return [
     // 4. CorsMiddleware
     // Permite que frontends em outros domínios acessem a API
     CorsMiddleware::class,
+
+    // 5. CsrfGuardMiddleware
+    // Exige Origin/Referer válidos em escritas autenticadas por cookie
+    CsrfGuardMiddleware::class,
 ];

@@ -32,6 +32,7 @@ use App\Cache\KeyValueStoreInterface;
 use App\Cache\RedisKeyValueStore;
 use App\Core\DatabaseCapsule;
 use App\Core\JwtService;
+use App\Middlewares\CsrfGuardMiddleware;
 use App\Middlewares\JwtAuthMiddleware;
 use App\Middlewares\CorsMiddleware;
 use App\Middlewares\RateLimitMiddleware;
@@ -70,6 +71,61 @@ if (!function_exists('env_config')) {
     }
 }
 
+if (!function_exists('origin_from_url')) {
+    function origin_from_url(string $url): ?string
+    {
+        $partes = parse_url($url);
+
+        if (!is_array($partes) || !isset($partes['scheme'], $partes['host'])) {
+            return null;
+        }
+
+        $origem = $partes['scheme'] . '://' . $partes['host'];
+
+        if (isset($partes['port'])) {
+            $origem .= ':' . $partes['port'];
+        }
+
+        return $origem;
+    }
+}
+
+if (!function_exists('normalizar_origens_permitidas')) {
+    function normalizar_origens_permitidas(array $origens): array
+    {
+        $origensNormalizadas = [];
+
+        foreach ($origens as $origem) {
+            if (!is_string($origem)) {
+                continue;
+            }
+
+            $origem = trim($origem);
+
+            if ($origem === '') {
+                continue;
+            }
+
+            $origensNormalizadas[$origem] = true;
+        }
+
+        return array_keys($origensNormalizadas);
+    }
+}
+
+$appUrl = (string) env_config('APP_URL', 'http://localhost:8000');
+$appOrigin = origin_from_url($appUrl);
+$corsAllowedOrigins = array_filter(array_map(
+    'trim',
+    explode(',', (string) env_config('CORS_ALLOWED_ORIGINS', 'http://localhost:3000'))
+));
+
+if ($appOrigin !== null) {
+    $corsAllowedOrigins[] = $appOrigin;
+}
+
+$corsAllowedOrigins = normalizar_origens_permitidas($corsAllowedOrigins);
+
 /**
  * Definições do Container
  *
@@ -92,11 +148,16 @@ return [
         'jwt' => [
             'secret' => env_config('JWT_SECRET', ''),
             'expiry' => (int) env_config('JWT_EXPIRY', 3600),
-            'issuer' => env_config('JWT_ISSUER', env_config('APP_URL', 'parrot-php')),
+            'issuer' => env_config('JWT_ISSUER', $appUrl),
             'audience' => env_config('JWT_AUDIENCE', 'parrot-api'),
         ],
+        'app' => [
+            'url' => $appUrl,
+            'origin' => $appOrigin,
+            'env' => (string) env_config('APP_ENV', 'development'),
+        ],
         'cors' => [
-            'allowed_origins' => explode(',', env_config('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')),
+            'allowed_origins' => $corsAllowedOrigins,
         ],
         'rate_limit' => [
             'max_requests' => (int) (env_config('RATE_LIMIT_MAX_REQUESTS', 60)),
@@ -128,6 +189,13 @@ return [
     KeyValueStoreInterface::class => function ($container) {
         $config = $container->get('config');
         $store = $config['cache']['store'];
+        $ambiente = $config['app']['env'];
+
+        if ($ambiente === 'production' && in_array($store, ['array', 'memory', 'apcu'], true)) {
+            throw new \RuntimeException(
+                'CACHE_STORE=' . $store . ' não é permitido em produção. Configure Redis para rate limit e blacklist distribuídos.'
+            );
+        }
 
         if ($store === 'array' || $store === 'memory' || env_config('APP_ENV') === 'testing') {
             return new ArrayKeyValueStore();
@@ -155,11 +223,29 @@ return [
                 if ($store === 'redis') {
                     throw new \RuntimeException('Não foi possível conectar ao Redis configurado para cache.');
                 }
+
+                if ($ambiente === 'production') {
+                    throw new \RuntimeException(
+                        'Produção exige Redis disponível para cache, rate limit e blacklist de JWT.'
+                    );
+                }
             }
         }
 
         if ($store === 'apcu' || ($store === 'auto' && function_exists('apcu_enabled') && apcu_enabled())) {
+            if ($ambiente === 'production') {
+                throw new \RuntimeException(
+                    'Produção exige cache distribuído. APCu não é suficiente para rate limit e blacklist entre workers.'
+                );
+            }
+
             return new ApcuKeyValueStore();
+        }
+
+        if ($ambiente === 'production') {
+            throw new \RuntimeException(
+                'Produção exige Redis configurado explicitamente ou disponível no modo auto.'
+            );
         }
 
         return new ArrayKeyValueStore();
@@ -184,6 +270,15 @@ return [
     CorsMiddleware::class => function ($container) {
         $corsConfig = $container->get('config')['cors'];
         return new CorsMiddleware($corsConfig['allowed_origins']);
+    },
+
+    CsrfGuardMiddleware::class => function ($container) {
+        $config = $container->get('config');
+
+        return new CsrfGuardMiddleware(
+            $config['cors']['allowed_origins'],
+            $config['app']['origin']
+        );
     },
 
     RateLimitMiddleware::class => function ($container) {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * ===========================================
  * Configuração de Rotas do Parrot PHP Framework

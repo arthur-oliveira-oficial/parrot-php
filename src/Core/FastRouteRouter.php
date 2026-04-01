@@ -445,13 +445,9 @@ class FastRouteControllerHandler implements RequestHandlerInterface
                 $this->invoker = new Invoker(null, $this->container);
             }
 
-            try {
-                return $this->invoker->call([$controller, $this->metodo], [
-                    'request' => $request,
-                ]);
-            } catch (\Exception $e) {
-                return $this->criarRespostaErro('Erro ao executar método: ' . $e->getMessage(), 500);
-            }
+            return $this->invoker->call([$controller, $this->metodo], [
+                'request' => $request,
+            ]);
         }
 
         return $controller->{$this->metodo}($request);
@@ -463,6 +459,11 @@ class FastRouteControllerHandler implements RequestHandlerInterface
             try {
                 return $this->container->get($this->controllerClass);
             } catch (\Psr\Container\NotFoundExceptionInterface|\Psr\Container\ContainerExceptionInterface $e) {
+                throw new \RuntimeException(
+                    'Falha ao resolver controller no container: ' . $this->controllerClass,
+                    0,
+                    $e
+                );
             }
         }
 

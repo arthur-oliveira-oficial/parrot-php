@@ -11,6 +11,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Cache\ArrayKeyValueStore;
+use App\Cache\KeyValueStoreInterface;
+
 /**
  * Model de Token Revogado
  *
@@ -26,6 +29,11 @@ namespace App\Models;
  */
 class TokenRevogado extends EloquentModel
 {
+    private static ?KeyValueStoreInterface $cacheStore = null;
+
+    /** @var array<string, bool> Cache local por processo para JTIs já revogados */
+    private static array $cacheRevogados = [];
+
     /** @var string Nome da tabela */
     protected $table = 'tokens_revogados';
 
@@ -50,7 +58,32 @@ class TokenRevogado extends EloquentModel
      */
     public static function estaRevogado(string $jti): bool
     {
-        return self::where('jti', $jti)->exists();
+        if (isset(self::$cacheRevogados[$jti])) {
+            return self::$cacheRevogados[$jti];
+        }
+
+        $cacheKey = self::getCacheKey($jti);
+        $cacheHit = self::cacheStore()->get($cacheKey);
+        if ($cacheHit === true) {
+            self::$cacheRevogados[$jti] = true;
+
+            return true;
+        }
+
+        $registro = self::query()
+            ->where('jti', $jti)
+            ->first(['expires_at']);
+
+        $revogado = $registro !== null;
+
+        if ($revogado) {
+            self::$cacheRevogados[$jti] = true;
+
+            $ttl = self::ttlFromDatabaseValue($registro->expires_at ?? null);
+            self::cacheStore()->set($cacheKey, true, $ttl);
+        }
+
+        return $revogado;
     }
 
     /**
@@ -68,6 +101,11 @@ class TokenRevogado extends EloquentModel
                 'revogado_em' => date('Y-m-d H:i:s'),
                 'expires_at' => date('Y-m-d H:i:s', $expiryTimestamp),
             ]);
+
+            self::$cacheRevogados[$jti] = true;
+            $ttl = max(1, $expiryTimestamp - time());
+            self::cacheStore()->set(self::getCacheKey($jti), true, $ttl);
+
             return true;
         } catch (\Exception $e) {
             return false;
@@ -82,5 +120,46 @@ class TokenRevogado extends EloquentModel
     public static function limparExpirados(): int
     {
         return self::where('expires_at', '<', date('Y-m-d H:i:s'))->delete();
+    }
+
+    public static function limparCache(): void
+    {
+        self::$cacheRevogados = [];
+        self::cacheStore()->clear();
+    }
+
+    public static function definirCacheStore(KeyValueStoreInterface $cacheStore): void
+    {
+        self::$cacheStore = $cacheStore;
+    }
+
+    private static function getCacheKey(string $jti): string
+    {
+        return 'token_revogado_' . $jti;
+    }
+
+    private static function cacheStore(): KeyValueStoreInterface
+    {
+        if (self::$cacheStore === null) {
+            self::$cacheStore = new ArrayKeyValueStore();
+        }
+
+        return self::$cacheStore;
+    }
+
+    private static function ttlFromDatabaseValue(mixed $expiresAt): int
+    {
+        if ($expiresAt instanceof \DateTimeInterface) {
+            return max(1, $expiresAt->getTimestamp() - time());
+        }
+
+        if (is_string($expiresAt)) {
+            $timestamp = strtotime($expiresAt);
+            if ($timestamp !== false) {
+                return max(1, $timestamp - time());
+            }
+        }
+
+        return 60;
     }
 }

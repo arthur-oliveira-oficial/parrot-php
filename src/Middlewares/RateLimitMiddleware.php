@@ -19,6 +19,8 @@
 
 namespace App\Middlewares;
 
+use App\Cache\ArrayKeyValueStore;
+use App\Cache\KeyValueStoreInterface;
 use Nyholm\Psr7\Response;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -39,20 +41,11 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class RateLimitMiddleware implements MiddlewareInterface
 {
-    /** @var array Armazenamento em memória (fallback se APCu não disponível) */
-    private static array $storage = [];
-
-    /** @var int Máximo de IPs simultâneos no storage (prevenção DoS) */
-    private const MAX_STORAGE_ENTRIES = 10000;
-
     /** @var int Máximo de requisições permitidas na janela */
     private readonly int $maxRequests;
 
     /** @var int Janela de tempo em segundos */
     private readonly int $windowSeconds;
-
-    /** @var bool Se APCu está disponível */
-    private readonly bool $apcuAvailable;
 
     /**
      * Construtor
@@ -61,12 +54,12 @@ class RateLimitMiddleware implements MiddlewareInterface
      * @param int $windowSeconds Janela de tempo em segundos (padrão: 60)
      */
     public function __construct(
+        private readonly KeyValueStoreInterface $store,
         int $maxRequests = 60,
         int $windowSeconds = 60
     ) {
         $this->maxRequests = $maxRequests;
         $this->windowSeconds = $windowSeconds;
-        $this->apcuAvailable = function_exists('apcu_enabled') && apcu_enabled();
     }
 
     /**
@@ -82,113 +75,28 @@ class RateLimitMiddleware implements MiddlewareInterface
         RequestHandlerInterface $handler
     ): ResponseInterface {
         $identifier = $this->getIdentifier($request);
+        $counterKey = $this->getStorageKey($identifier);
+        $requestCount = $this->store->increment($counterKey, $this->windowSeconds);
+        $ttl = $this->store->ttl($counterKey) ?? $this->windowSeconds;
+        $remaining = max(0, $this->maxRequests - $requestCount);
 
-        $rateLimitInfo = $this->getRateLimitInfo($identifier);
-
-        if ($rateLimitInfo['limited']) {
+        if ($requestCount > $this->maxRequests) {
             return new Response(429, [
                 'Content-Type' => 'application/json',
-                'Retry-After' => (string) $rateLimitInfo['retry_after'],
+                'Retry-After' => (string) $ttl,
             ], json_encode([
                 'error' => 'Too Many Requests',
                 'message' => 'Limite de requisições excedido. Tente novamente mais tarde.',
-                'retry_after' => $rateLimitInfo['retry_after'],
+                'retry_after' => $ttl,
             ], JSON_UNESCAPED_UNICODE));
         }
 
-        $this->incrementCounter($identifier);
-
         $response = $handler->handle($request);
-
-        $infoAfter = $this->getRateLimitInfo($identifier);
 
         return $response
             ->withHeader('X-RateLimit-Limit', (string) $this->maxRequests)
-            ->withHeader('X-RateLimit-Remaining', (string) $infoAfter['remaining'])
-            ->withHeader('X-RateLimit-Reset', (string) $infoAfter['reset']);
-    }
-
-    /**
-     * Obtém informação de rate limit atual
-     *
-     * @return array{limited: bool, remaining: int, reset: int, retry_after: int}
-     */
-    private function getRateLimitInfo(string $identifier): array
-    {
-        if ($this->apcuAvailable) {
-            return $this->getRateLimitInfoApcu($identifier);
-        }
-        return $this->getRateLimitInfoFallback($identifier);
-    }
-
-    /**
-     * Obtém informação de rate limit via APCu
-     */
-    private function getRateLimitInfoApcu(string $identifier): array
-    {
-        $key = $this->getStorageKey($identifier);
-        $record = apcu_fetch($key, $success);
-
-        if (!$success) {
-            return [
-                'limited' => false,
-                'remaining' => $this->maxRequests,
-                'reset' => time() + $this->windowSeconds,
-                'retry_after' => 0,
-            ];
-        }
-
-        $now = time();
-
-        if ($now >= $record['reset']) {
-            return [
-                'limited' => false,
-                'remaining' => $this->maxRequests,
-                'reset' => $now + $this->windowSeconds,
-                'retry_after' => 0,
-            ];
-        }
-
-        return [
-            'limited' => $record['count'] >= $this->maxRequests,
-            'remaining' => max(0, $this->maxRequests - $record['count']),
-            'reset' => $record['reset'],
-            'retry_after' => max(0, $record['reset'] - $now),
-        ];
-    }
-
-    /**
-     * Obtém informação de rate limit via array estático (fallback)
-     */
-    private function getRateLimitInfoFallback(string $identifier): array
-    {
-        if (!isset(self::$storage[$identifier])) {
-            return [
-                'limited' => false,
-                'remaining' => $this->maxRequests,
-                'reset' => time() + $this->windowSeconds,
-                'retry_after' => 0,
-            ];
-        }
-
-        $now = time();
-        $record = self::$storage[$identifier];
-
-        if ($now >= $record['reset']) {
-            return [
-                'limited' => false,
-                'remaining' => $this->maxRequests,
-                'reset' => $now + $this->windowSeconds,
-                'retry_after' => 0,
-            ];
-        }
-
-        return [
-            'limited' => $record['count'] >= $this->maxRequests,
-            'remaining' => max(0, $this->maxRequests - $record['count']),
-            'reset' => $record['reset'],
-            'retry_after' => max(0, $record['reset'] - $now),
-        ];
+            ->withHeader('X-RateLimit-Remaining', (string) $remaining)
+            ->withHeader('X-RateLimit-Reset', (string) (time() + $ttl));
     }
 
     /**
@@ -305,87 +213,8 @@ class RateLimitMiddleware implements MiddlewareInterface
         return $remoteAddr;
     }
 
-    /**
-     * Incrementa o contador de requisições
-     */
-    private function incrementCounter(string $identifier): void
-    {
-        if ($this->apcuAvailable) {
-            $this->incrementCounterApcu($identifier);
-        } else {
-            $this->incrementCounterFallback($identifier);
-        }
-    }
-
-    /**
-     * Incrementa contador via APCu
-     */
-    private function incrementCounterApcu(string $identifier): void
-    {
-        $key = $this->getStorageKey($identifier);
-        $now = time();
-
-        $record = apcu_fetch($key, $success);
-
-        if (!$success || $now >= $record['reset']) {
-            apcu_store($key, [
-                'count' => 1,
-                'reset' => $now + $this->windowSeconds,
-            ], $this->windowSeconds + 60);
-            return;
-        }
-
-        $record['count']++;
-        apcu_store($key, $record, max(1, ($record['reset'] - $now) + 60));
-    }
-
-    /**
-     * Incrementa contador via array estático (fallback com protecao)
-     */
-    private function incrementCounterFallback(string $identifier): void
-    {
-        // Limpar entradas expiradas com probabilidade de 1%
-        // Isso previne memory leak em ambientes persistentes
-        if (count(self::$storage) > self::MAX_STORAGE_ENTRIES) {
-            $this->cleanupExpiredFallback();
-        }
-
-        $now = time();
-
-        if (!isset(self::$storage[$identifier])) {
-            self::$storage[$identifier] = [
-                'count' => 1,
-                'reset' => $now + $this->windowSeconds,
-            ];
-            return;
-        }
-
-        if ($now >= self::$storage[$identifier]['reset']) {
-            self::$storage[$identifier] = [
-                'count' => 1,
-                'reset' => $now + $this->windowSeconds,
-            ];
-            return;
-        }
-
-        self::$storage[$identifier]['count']++;
-    }
-
-    /**
-     * Limpa entradas expiradas do storage fallback (prevenção de memory leak)
-     */
-    private function cleanupExpiredFallback(): void
-    {
-        $now = time();
-        foreach (self::$storage as $key => $record) {
-            if ($now >= $record['reset']) {
-                unset(self::$storage[$key]);
-            }
-        }
-    }
-
     public static function clearStorage(): void
     {
-        self::$storage = [];
+        (new ArrayKeyValueStore())->clear();
     }
 }

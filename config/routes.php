@@ -31,8 +31,8 @@ return [
     // =======================================
     // POST /api/auth/login - Login de usuário (público) com rate limit específico
     'POST /api/auth/login' => [AuthController::class, 'login', 'rate_limit_login'],
-    // POST /api/auth/logout - Logout de usuário
-    'POST /api/auth/logout' => [AuthController::class, 'logout'],
+    // POST /api/auth/logout - Logout de usuário (requer JWT válido)
+    'POST /api/auth/logout' => [AuthController::class, 'logout', JwtAuthMiddleware::class],
     // GET /api/auth/me - Dados do usuário atual (requer JWT)
     'GET /api/auth/me' => [AuthController::class, 'me', JwtAuthMiddleware::class],
 

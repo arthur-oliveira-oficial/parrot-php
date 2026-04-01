@@ -82,6 +82,24 @@ class AuthTest extends TestCase
         $this->assertArrayHasKey('message', $body);
     }
 
+    public function testLogoutSemAutenticacao(): void
+    {
+        $response = $this->call('POST', '/api/auth/logout');
+
+        $this->assertEquals(401, $response->getStatusCode());
+    }
+
+    public function testTokenRevogadoERejeitadoAposLogout(): void
+    {
+        $token = $this->getJwtToken('admin@parrot.com', 'admin123');
+
+        $logoutResponse = $this->call('POST', '/api/auth/logout', [], [], $token);
+        $this->assertEquals(200, $logoutResponse->getStatusCode());
+
+        $meResponse = $this->call('GET', '/api/auth/me', [], [], $token);
+        $this->assertEquals(401, $meResponse->getStatusCode());
+    }
+
     public function testMe(): void
     {
         // Primeiro faz login para obter token

@@ -122,8 +122,9 @@ class AuthController extends Controller
      */
     public function logout(ServerRequestInterface $request): ResponseInterface
     {
-        // Tenta obter o token para adicionar à blacklist
-        $token = $this->obterToken($request);
+        // Com a rota protegida por JwtAuthMiddleware, o cookie já foi validado.
+        // Ainda assim, só consideramos o cookie HttpOnly para revogação.
+        $token = $this->obterTokenCookie($request);
 
         if ($token) {
             $payload = $this->decodificarToken($token);
@@ -164,6 +165,18 @@ class AuthController extends Controller
         }
 
         // Fallback: tenta o cookie
+        $cookies = $request->getCookieParams();
+        return $cookies['token'] ?? null;
+    }
+
+    /**
+     * Obtém o token JWT exclusivamente do cookie HttpOnly.
+     *
+     * No logout, a revogação deve refletir apenas a sessão autenticada do navegador,
+     * evitando aceitar um Bearer arbitrário enviado fora do fluxo principal.
+     */
+    private function obterTokenCookie(ServerRequestInterface $request): ?string
+    {
         $cookies = $request->getCookieParams();
         return $cookies['token'] ?? null;
     }

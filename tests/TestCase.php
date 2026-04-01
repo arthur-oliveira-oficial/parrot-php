@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests;
 
 use App\Core\Application;
+use App\Models\TokenRevogado;
 use DI\ContainerBuilder;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use PHPUnit\Framework\TestCase as PHPUnitTestCase;
@@ -44,6 +45,7 @@ abstract class TestCase extends PHPUnitTestCase
         $this->psr17Factory = new Psr17Factory();
 
         \App\Middlewares\RateLimitMiddleware::clearStorage();
+        TokenRevogado::limparCache();
 
         $this->resetDatabase();
     }

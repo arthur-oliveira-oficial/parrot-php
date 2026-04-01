@@ -24,15 +24,21 @@
 
 use App\Controllers\UserController;
 use App\Controllers\AuthController;
+use App\Cache\ApcuKeyValueStore;
+use App\Cache\ArrayKeyValueStore;
+use App\Cache\KeyValueStoreInterface;
+use App\Cache\RedisKeyValueStore;
 use App\Core\DatabaseCapsule;
 use App\Middlewares\JwtAuthMiddleware;
 use App\Middlewares\CorsMiddleware;
 use App\Middlewares\RateLimitMiddleware;
 use App\Middlewares\SecurityHeadersMiddleware;
 use App\Middlewares\ErrorHandlerMiddleware;
+use App\Models\TokenRevogado;
 use App\Models\UserModel;
 use App\Views\UserResource;
 use Nyholm\Psr7\Factory\Psr17Factory;
+use Predis\Client as PredisClient;
 use Psr\Http\Message\ResponseFactoryInterface;
 
 /**
@@ -98,7 +104,50 @@ return [
             'max_requests' => (int) (env_config('RATE_LIMIT_LOGIN_MAX_REQUESTS', 5)),
             'window_seconds' => (int) (env_config('RATE_LIMIT_LOGIN_WINDOW_SECONDS', 900)),
         ],
+        'cache' => [
+            'store' => env_config('CACHE_STORE', 'auto'),
+            'prefix' => env_config('CACHE_PREFIX', 'parrot:'),
+        ],
+        'redis' => [
+            'scheme' => env_config('REDIS_SCHEME', 'tcp'),
+            'host' => env_config('REDIS_HOST', '127.0.0.1'),
+            'port' => (int) env_config('REDIS_PORT', 6379),
+            'database' => (int) env_config('REDIS_DATABASE', 0),
+            'password' => env_config('REDIS_PASSWORD', null),
+            'timeout' => (float) env_config('REDIS_TIMEOUT', 1.5),
+        ],
     ],
+
+    KeyValueStoreInterface::class => function ($container) {
+        $config = $container->get('config');
+        $store = $config['cache']['store'];
+
+        if ($store === 'array' || $store === 'memory' || getenv('APP_ENV') === 'testing') {
+            return new ArrayKeyValueStore();
+        }
+
+        if ($store === 'redis' || ($store === 'auto' && class_exists(PredisClient::class) && env_config('REDIS_HOST', '') !== '')) {
+            $redisConfig = $config['redis'];
+
+            return new RedisKeyValueStore(
+                new PredisClient([
+                    'scheme' => $redisConfig['scheme'],
+                    'host' => $redisConfig['host'],
+                    'port' => $redisConfig['port'],
+                    'database' => $redisConfig['database'],
+                    'password' => $redisConfig['password'],
+                    'timeout' => $redisConfig['timeout'],
+                ]),
+                $config['cache']['prefix']
+            );
+        }
+
+        if ($store === 'apcu' || ($store === 'auto' && function_exists('apcu_enabled') && apcu_enabled())) {
+            return new ApcuKeyValueStore();
+        }
+
+        return new ArrayKeyValueStore();
+    },
 
     DatabaseCapsule::class => function ($container) {
         $dbConfig = $container->get('config')['db'];
@@ -113,6 +162,7 @@ return [
     RateLimitMiddleware::class => function ($container) {
         $rateLimitConfig = $container->get('config')['rate_limit'];
         return new RateLimitMiddleware(
+            $container->get(KeyValueStoreInterface::class),
             $rateLimitConfig['max_requests'],
             $rateLimitConfig['window_seconds']
         );
@@ -122,6 +172,7 @@ return [
     'rate_limit_login' => function ($container) {
         $rateLimitConfig = $container->get('config')['rate_limit_login'];
         return new RateLimitMiddleware(
+            $container->get(KeyValueStoreInterface::class),
             $rateLimitConfig['max_requests'],
             $rateLimitConfig['window_seconds']
         );
@@ -148,6 +199,11 @@ return [
         return new UserModel();
     },
 
+    TokenRevogado::class => function ($container) {
+        TokenRevogado::definirCacheStore($container->get(KeyValueStoreInterface::class));
+        return new TokenRevogado();
+    },
+
     UserResource::class => function () {
         return new UserResource();
     },
@@ -160,13 +216,16 @@ return [
     },
 
     AuthController::class => function ($container) {
+        $container->get(TokenRevogado::class);
+
         return new AuthController(
             $container->get(UserModel::class),
             $container->get(UserResource::class)
         );
     },
 
-    JwtAuthMiddleware::class => function () {
+    JwtAuthMiddleware::class => function ($container) {
+        $container->get(TokenRevogado::class);
         return new JwtAuthMiddleware();
     },
 ];

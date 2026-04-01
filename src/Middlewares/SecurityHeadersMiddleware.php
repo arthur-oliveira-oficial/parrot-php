@@ -37,6 +37,11 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class SecurityHeadersMiddleware implements MiddlewareInterface
 {
+    public function __construct(
+        private readonly array $ipsProxyConfiavel = []
+    ) {
+    }
+
     /**
      * Processa a requisição adicionando headers de segurança
      *
@@ -54,7 +59,8 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
         $response = $handler->handle($request);
 
         $protocoloEncaminhado = strtolower(trim($request->getHeaderLine('X-Forwarded-Proto')));
-        $ehHttps = $request->getUri()->getScheme() === 'https' || $protocoloEncaminhado === 'https';
+        $ehHttps = $request->getUri()->getScheme() === 'https'
+            || ($protocoloEncaminhado === 'https' && $this->requisicaoVeioDeProxyConfiavel($request));
 
         $response = $response
             ->withHeader('X-Content-Type-Options', 'nosniff')
@@ -74,5 +80,13 @@ class SecurityHeadersMiddleware implements MiddlewareInterface
         }
 
         return $response;
+    }
+
+    private function requisicaoVeioDeProxyConfiavel(ServerRequestInterface $request): bool
+    {
+        $serverParams = $request->getServerParams();
+        $remoteAddr = $serverParams['REMOTE_ADDR'] ?? null;
+
+        return is_string($remoteAddr) && in_array($remoteAddr, $this->ipsProxyConfiavel, true);
     }
 }

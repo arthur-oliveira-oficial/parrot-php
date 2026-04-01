@@ -18,6 +18,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -96,6 +97,17 @@ class UserModel extends EloquentModel
     public function findByEmail(string $email): ?self
     {
         return self::where('email', $email)->first();
+    }
+
+    public function emailJaExisteMesmoComDeletado(string $email, ?int $ignorarId = null): bool
+    {
+        $query = self::withTrashed()->where('email', $email);
+
+        if ($ignorarId !== null) {
+            $query->where('id', '!=', $ignorarId);
+        }
+
+        return $query->exists();
     }
 
     public function findByEmailWithTrashed(string $email): ?self
@@ -203,8 +215,13 @@ class UserModel extends EloquentModel
      */
     public function criarUsuario(array $data): int
     {
-        $usuario = static::query()->create($data);
-        return $usuario->id;
+        try {
+            $usuario = static::query()->create($data);
+
+            return $usuario->id;
+        } catch (UniqueConstraintViolationException) {
+            return 0;
+        }
     }
 
     /**
@@ -220,6 +237,8 @@ class UserModel extends EloquentModel
             $usuario = self::findOrFail($id);
             $usuario->update($data);
             return true;
+        } catch (UniqueConstraintViolationException) {
+            return false;
         } catch (ModelNotFoundException) {
             return false;
         }

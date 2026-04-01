@@ -162,8 +162,7 @@ class UserController extends Controller
             return $this->resource->validationError($errors);
         }
 
-        $existing = $this->model->findByEmail($body['email']);
-        if ($existing) {
+        if ($this->model->emailJaExisteMesmoComDeletado($body['email'])) {
             return $this->error('Não foi possível processar o registo com os dados fornecidos.', 422);
         }
 
@@ -171,6 +170,10 @@ class UserController extends Controller
         // Para criar admins, use o método interno criarUsuarioAdmin() do Model
 
         $id = $this->model->criarUsuario($body);
+
+        if ($id <= 0) {
+            return $this->error('Não foi possível processar o registo com os dados fornecidos.', 422);
+        }
 
         $usuario = $this->model->buscarPorId($id);
 
@@ -245,8 +248,7 @@ class UserController extends Controller
 
         // Verifica se email já está em uso (se alterado)
         if (isset($dadosAtualizaveis['email']) && $dadosAtualizaveis['email'] !== $usuario['email']) {
-            $existing = $this->model->findByEmail($dadosAtualizaveis['email']);
-            if ($existing) {
+            if ($this->model->emailJaExisteMesmoComDeletado($dadosAtualizaveis['email'], $id)) {
                 return $this->error('Não foi possível processar a atualização com os dados fornecidos.', 422);
             }
         }
@@ -259,7 +261,9 @@ class UserController extends Controller
         }
 
         // Atualiza no banco
-        $this->model->atualizarUsuario($id, $data);
+        if (!$this->model->atualizarUsuario($id, $data)) {
+            return $this->error('Não foi possível processar a atualização com os dados fornecidos.', 422);
+        }
 
         // Retorna usuário atualizado
         $usuarioAtualizado = $this->model->findWithoutTrashed($id);

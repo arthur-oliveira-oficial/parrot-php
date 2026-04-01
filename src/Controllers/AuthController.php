@@ -49,7 +49,8 @@ class AuthController extends Controller
     public function __construct(
         protected UserModel $model,
         protected UserResource $resource,
-        private readonly JwtService $jwtService
+        private readonly JwtService $jwtService,
+        private readonly array $ipsProxyConfiavel = []
     ) {
     }
 
@@ -210,10 +211,22 @@ class AuthController extends Controller
 
     private function deveUsarCookieSeguro(ServerRequestInterface $request): bool
     {
-        $protocoloEncaminhado = strtolower(trim($request->getHeaderLine('X-Forwarded-Proto')));
         $schema = strtolower($request->getUri()->getScheme());
         $ambiente = (string) ($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? getenv('APP_ENV') ?: 'development');
+        $protocoloEncaminhado = strtolower(trim($request->getHeaderLine('X-Forwarded-Proto')));
 
-        return $schema === 'https' || $protocoloEncaminhado === 'https' || $ambiente === 'production';
+        if ($schema === 'https' || $ambiente === 'production') {
+            return true;
+        }
+
+        return $protocoloEncaminhado === 'https' && $this->requisicaoVeioDeProxyConfiavel($request);
+    }
+
+    private function requisicaoVeioDeProxyConfiavel(ServerRequestInterface $request): bool
+    {
+        $serverParams = $request->getServerParams();
+        $remoteAddr = $serverParams['REMOTE_ADDR'] ?? null;
+
+        return is_string($remoteAddr) && in_array($remoteAddr, $this->ipsProxyConfiavel, true);
     }
 }

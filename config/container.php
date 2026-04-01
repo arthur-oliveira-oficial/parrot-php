@@ -135,18 +135,27 @@ return [
 
         if ($store === 'redis' || ($store === 'auto' && class_exists(PredisClient::class) && env_config('REDIS_HOST', '') !== '')) {
             $redisConfig = $config['redis'];
+            $clienteRedis = new PredisClient([
+                'scheme' => $redisConfig['scheme'],
+                'host' => $redisConfig['host'],
+                'port' => $redisConfig['port'],
+                'database' => $redisConfig['database'],
+                'password' => $redisConfig['password'],
+                'timeout' => $redisConfig['timeout'],
+            ]);
 
-            return new RedisKeyValueStore(
-                new PredisClient([
-                    'scheme' => $redisConfig['scheme'],
-                    'host' => $redisConfig['host'],
-                    'port' => $redisConfig['port'],
-                    'database' => $redisConfig['database'],
-                    'password' => $redisConfig['password'],
-                    'timeout' => $redisConfig['timeout'],
-                ]),
-                $config['cache']['prefix']
-            );
+            try {
+                $clienteRedis->connect();
+
+                return new RedisKeyValueStore(
+                    $clienteRedis,
+                    $config['cache']['prefix']
+                );
+            } catch (\Throwable) {
+                if ($store === 'redis') {
+                    throw new \RuntimeException('Não foi possível conectar ao Redis configurado para cache.');
+                }
+            }
         }
 
         if ($store === 'apcu' || ($store === 'auto' && function_exists('apcu_enabled') && apcu_enabled())) {
@@ -200,8 +209,10 @@ return [
         );
     },
 
-    SecurityHeadersMiddleware::class => function () {
-        return new SecurityHeadersMiddleware();
+    SecurityHeadersMiddleware::class => function ($container) {
+        return new SecurityHeadersMiddleware(
+            $container->get('config')['trusted_proxy_ips']
+        );
     },
 
     ErrorHandlerMiddleware::class => function ($container) {
@@ -243,7 +254,8 @@ return [
         return new AuthController(
             $container->get(UserModel::class),
             $container->get(UserResource::class),
-            $container->get(JwtService::class)
+            $container->get(JwtService::class),
+            $container->get('config')['trusted_proxy_ips']
         );
     },
 

@@ -144,6 +144,37 @@ class UserCrudTest extends TestCase
         $this->assertEquals(422, $response->getStatusCode());
     }
 
+    public function testCriarUsuarioComEmailDeUtilizadorRemovidoRetorna422(): void
+    {
+        $adminToken = $this->getJwtToken('admin@parrot.com', 'admin123');
+        $email = 'removido_' . time() . '@parrot.com';
+
+        $createResponse = $this->call('POST', '/api/usuarios', [
+            'nome' => 'Utilizador Removido',
+            'email' => $email,
+            'senha' => 'senhaForte123'
+        ], [], $adminToken);
+
+        $this->assertEquals(201, $createResponse->getStatusCode());
+
+        $createBody = $this->getJsonBody($createResponse);
+        $userId = $createBody['data']['id'];
+
+        $deleteResponse = $this->call('DELETE', "/api/usuarios/{$userId}", [], [], $adminToken);
+        $this->assertEquals(200, $deleteResponse->getStatusCode());
+
+        $recreateResponse = $this->call('POST', '/api/usuarios', [
+            'nome' => 'Novo Registo',
+            'email' => $email,
+            'senha' => 'senhaForte123'
+        ], [], $adminToken);
+
+        $this->assertEquals(422, $recreateResponse->getStatusCode());
+
+        $body = $this->getJsonBody($recreateResponse);
+        $this->assertArrayHasKey('error', $body);
+    }
+
     public function testCriarUsuarioNaoAdmin(): void
     {
         $token = $this->getJwtToken($this->normalUserEmail, $this->normalUserPassword);

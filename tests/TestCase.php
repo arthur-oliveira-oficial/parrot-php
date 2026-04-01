@@ -53,6 +53,8 @@ abstract class TestCase extends PHPUnitTestCase
      */
     protected function resetDatabase(): void
     {
+        $this->ensureTestDatabaseExists();
+
         $capsule = $this->container->get(\App\Core\DatabaseCapsule::class)->getCapsule();
         $schema = $capsule->schema();
 
@@ -89,6 +91,38 @@ abstract class TestCase extends PHPUnitTestCase
         foreach ($seedFiles as $seedFile) {
             require $seedFile;
         }
+    }
+
+    /**
+     * Garante a criação do banco de testes antes de abrir a conexão principal.
+     */
+    protected function ensureTestDatabaseExists(): void
+    {
+        $driver = $_ENV['DB_DRIVER'] ?? 'mysql';
+
+        if ($driver !== 'mysql') {
+            return;
+        }
+
+        $host = $_ENV['DB_HOST'] ?? 'localhost';
+        $port = (int) ($_ENV['DB_PORT'] ?? 3306);
+        $database = $_ENV['DB_NAME'] ?? $_ENV['DB_DATABASE'] ?? 'parrot_test';
+        $user = $_ENV['DB_USER'] ?? 'root';
+        $password = $_ENV['DB_PASSWORD'] ?? '';
+
+        $pdo = new \PDO(
+            "mysql:host={$host};port={$port};charset=utf8mb4",
+            $user,
+            $password,
+            [
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ]
+        );
+
+        $pdo->exec(sprintf(
+            'CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci',
+            str_replace('`', '``', $database)
+        ));
     }
 
     /**

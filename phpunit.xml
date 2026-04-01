@@ -28,9 +28,8 @@
         <env name="DB_DRIVER" value="mysql"/>
         <env name="DB_HOST" value="localhost"/>
         <env name="DB_PORT" value="3306"/>
-        <env name="DB_DATABASE" value="parrot_test"/>
+        <env name="DB_NAME" value="parrot_test"/>
         <env name="DB_USER" value="root"/>
-        <env name="DB_PASSWORD" value=""/>
         <env name="JWT_SECRET" value="parrot_dev_secret_key_123456789"/>
         <env name="JWT_EXPIRY" value="3600"/>
         <env name="JWT_ISSUER" value="http://localhost"/>

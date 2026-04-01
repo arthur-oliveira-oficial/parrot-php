@@ -43,14 +43,16 @@ Domínio hoje implementado:
 
 1. Todo arquivo PHP novo deve iniciar com `declare(strict_types=1);`.
 2. Ao editar arquivos antigos sem `strict_types`, preserve o comportamento e adicione `strict_types` quando a mudança for segura.
-3. Todo código novo deve usar **pt-BR** em nomes de variáveis, métodos, comentários, mensagens e payloads JSON.
-4. A API deve continuar retornando **JSON padronizado** via `App\Core\Response` ou classes de `src/Views`.
-5. Controllers e middlewares devem receber dependências por construtor e serem resolvidos pelo container.
-6. Em código de aplicação, use **Eloquent**. Não introduza SQL raw em controllers, models ativos ou serviços HTTP.
-7. Senhas devem usar `PASSWORD_ARGON2ID`.
-8. Rotas protegidas devem usar `JwtAuthMiddleware`.
-9. Nunca confiar em input do cliente. Validar body, query params, ids de rota e permissões.
-10. Não reintroduza SQLite em testes, scripts ou documentação operacional.
+3. Diretórios, nomes de arquivos e nomes físicos de artefatos do projeto devem permanecer em **inglês**.
+4. Todo código novo deve usar **pt-BR** em nomes de variáveis, métodos, comentários, mensagens e payloads JSON.
+5. Ao criar arquivos novos, mantenha a estrutura externa em inglês e o conteúdo interno do código em pt-BR.
+6. A API deve continuar retornando **JSON padronizado** via `App\Core\Response` ou classes de `src/Views`.
+7. Controllers e middlewares devem receber dependências por construtor e serem resolvidos pelo container.
+8. Em código de aplicação, use **Eloquent**. Não introduza SQL raw em controllers, models ativos ou serviços HTTP.
+9. Senhas devem usar `PASSWORD_ARGON2ID`.
+10. Rotas protegidas devem usar `JwtAuthMiddleware`.
+11. Nunca confiar em input do cliente. Validar body, query params, ids de rota e permissões.
+12. Não reintroduza SQLite em testes, scripts ou documentação operacional.
 
 ## Convenções Reais do Projeto
 
@@ -211,6 +213,7 @@ Ao receber uma solicitação:
 - primeiro confirme como o código atual implementa o fluxo
 - depois siga o padrão já existente, não um padrão imaginado
 - mantenha compatibilidade com o container, rotas e testes atuais
+- mantenha diretórios e arquivos em inglês
 - preserve pt-BR
 - preserve a arquitetura enxuta do framework
 

@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parrot PHP | Micro-framework REST para APIs JSON em PHP 8.4</title>
+    <meta
+        name="description"
+        content="Parrot PHP e um micro-framework REST para APIs JSON em PHP 8.4, com FastRoute, PHP-DI, PSR-7/PSR-15, Eloquent, JWT manual em cookie HttpOnly e testes integrados com MySQL."
+    >
+    <meta name="theme-color" content="#d84c2d">
+    <script>
+        document.documentElement.classList.add("js");
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&amp;family=Fraunces:opsz,wght@9..144,500;9..144,700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap"
+        rel="stylesheet"
+    >
+    <style>
+        :root {
+            --fundo: #f6eddf;
+            --fundo-suave: #fff9ef;
+            --tinta: #11191f;
+            --tinta-suave: #53606c;
+            --borda: rgba(17, 25, 31, 0.12);
+            --vermelho: #d84c2d;
+            --verde: #0d8a6f;
+            --azul: #165ed8;
+            --ocre: #d6a11b;
+            --escuro: #0f171d;
+            --escuro-secundario: #16232c;
+            --claro: #ffffff;
+            --sombra: 0 28px 80px rgba(17, 25, 31, 0.14);
+            --raio-xl: 32px;
+            --raio-lg: 24px;
+            --raio-md: 18px;
+            --fonte-titulo: "Fraunces", "Palatino Linotype", serif;
+            --fonte-corpo: "Bricolage Grotesque", "Trebuchet MS", sans-serif;
+            --fonte-codigo: "IBM Plex Mono", "Courier New", monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--tinta);
+            font-family: var(--fonte-corpo);
+            line-height: 1.55;
+            background:
+                radial-gradient(circle at 8% 12%, rgba(216, 76, 45, 0.22), transparent 22%),
+                radial-gradient(circle at 92% 10%, rgba(13, 138, 111, 0.22), transparent 20%),
+                radial-gradient(circle at 74% 40%, rgba(22, 94, 216, 0.1), transparent 22%),
+                linear-gradient(180deg, #fbf5ea 0%, #f2e6d2 100%);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(17, 25, 31, 0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(17, 25, 31, 0.025) 1px, transparent 1px);
+            background-size: 42px 42px;
+            opacity: 0.5;
+            mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.68), transparent 92%);
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        img,
+        svg {
+            display: block;
+            max-width: 100%;
+        }
+
+        button,
+        input,
+        textarea,
+        select {
+            font: inherit;
+        }
+
+        code,
+        pre {
+            font-family: var(--fonte-codigo);
+        }
+
+        .pular-conteudo {
+            position: absolute;
+            left: 16px;
+            top: -52px;
+            z-index: 30;
+            padding: 0.8rem 1rem;
+            border-radius: 999px;
+            background: var(--escuro);
+            color: var(--claro);
+            transition: top 0.2s ease;
+        }
+
+        .pular-conteudo:focus {
+            top: 16px;
+        }
+
+        .cabecalho {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            width: min(1240px, calc(100% - 24px));
+            margin: 16px auto 0;
+            padding: 0.95rem 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            background: rgba(255, 249, 239, 0.74);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(17, 25, 31, 0.08);
+            border-radius: 999px;
+            box-shadow: 0 14px 40px rgba(17, 25, 31, 0.08);
+        }
+
+        .marca {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.8rem;
+            min-width: fit-content;
+        }
+
+        .marca__selo {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            color: var(--claro);
+            background:
+                linear-gradient(135deg, var(--vermelho) 0%, #f39c1d 48%, var(--verde) 100%);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26);
+            font-weight: 800;
+            letter-spacing: 0.06em;
+        }
+
+        .marca__texto {
+            display: grid;
+            gap: 0.05rem;
+        }
+
+        .marca__titulo {
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+
+        .marca__subtitulo {
+            color: var(--tinta-suave);
+            font-size: 0.82rem;
+        }
+
+        .navegacao {
+            display: flex;
+            align-items: center;
+            gap: 0.95rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .navegacao a {
+            position: relative;
+            font-size: 0.95rem;
+            color: var(--tinta-suave);
+        }
+
+        .navegacao a::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: -0.35rem;
+            width: 100%;
+            height: 2px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--vermelho), var(--verde));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.2s ease;
+        }
+
+        .navegacao a:hover::after,
+        .navegacao a.ativo::after {
+            transform: scaleX(1);
+        }
+
+        .acoes-topo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .botao,
+        .botao-secundario {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.55rem;
+            min-height: 46px;
+            padding: 0.85rem 1.15rem;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            font-weight: 700;
+            transition:
+                transform 0.2s ease,
+                box-shadow 0.2s ease,
+                background 0.2s ease,
+                color 0.2s ease;
+        }
+
+        .botao:hover,
+        .botao-secundario:hover,
+        .aba:hover,
+        .copiar:hover {
+            transform: translateY(-1px);
+        }
+
+        .botao {
+            color: var(--claro);
+            background: linear-gradient(135deg, var(--escuro) 0%, var(--azul) 100%);
+            box-shadow: 0 14px 28px rgba(22, 94, 216, 0.22);
+        }
+
+        .botao-secundario {
+            color: var(--tinta);
+            border-color: rgba(17, 25, 31, 0.12);
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        main {
+            overflow: clip;
+        }
+
+        .secao,
+        .hero {
+            width: min(1240px, calc(100% - 24px));
+            margin-inline: auto;
+        }
+
+        .hero {
+            position: relative;
+            display: grid;
+            grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+            gap: 2rem;
+            align-items: center;
+            padding: 5.5rem 0 4.5rem;
+        }
+
+        .hero__texto {
+            position: relative;
+            z-index: 2;
+        }
+
+        .etiqueta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            margin: 0 0 1.1rem;
+            padding: 0.5rem 0.8rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.74);
+            border: 1px solid rgba(17, 25, 31, 0.08);
+            font-size: 0.86rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--tinta-suave);
+        }
+
+        .etiqueta::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--vermelho), var(--verde));
+        }
+
+        h1,
+        h2,
+        h3 {
+            margin: 0;
+            font-family: var(--fonte-titulo);
+            line-height: 0.94;
+            letter-spacing: -0.03em;
+        }
+
+        h1 {
+            max-width: 10ch;
+            font-size: clamp(3.8rem, 8vw, 7.2rem);
+        }
+
+        .hero__lead {
+            max-width: 58ch;
+            margin: 1.35rem 0 0;
+            font-size: clamp(1.08rem, 1.4vw, 1.34rem);
+            color: var(--tinta-suave);
+        }
+
+        .hero__acoes {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            flex-wrap: wrap;
+            margin-top: 1.6rem;
+        }
+
+        .hero__selos {
+            list-style: none;
+            padding: 0;
+            margin: 1.8rem 0 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .hero__selos li {
+            padding: 0.7rem 0.95rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid rgba(17, 25, 31, 0.08);
+            font-weight: 700;
+            color: var(--tinta-suave);
+            box-shadow: 0 10px 30px rgba(17, 25, 31, 0.05);
+        }
+
+        .hero__painel {
+            position: relative;
+            min-height: 620px;
+        }
+
+        .hero__marca-gigante {
+            position: absolute;
+            inset: -12px 0 auto auto;
+            font-family: var(--fonte-titulo);
+            font-size: clamp(5rem, 12vw, 9rem);
+            line-height: 0.8;
+            letter-spacing: -0.06em;
+            color: rgba(17, 25, 31, 0.08);
+            transform: rotate(-8deg);
+            user-select: none;
+            pointer-events: none;
+        }
+
+        .janela {
+            position: relative;
+            z-index: 2;
+            border-radius: var(--raio-xl);
+            overflow: hidden;
+            background: linear-gradient(180deg, rgba(15, 23, 29, 0.96), rgba(22, 35, 44, 0.96));
+            color: var(--claro);
+            box-shadow: 0 36px 90px rgba(17, 25, 31, 0.2);
+        }
+
+        .janela__topo {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem 1.15rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .bolinhas {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .bolinhas span {
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+        }
+
+        .bolinhas span:nth-child(1) {
+            background: #ff5f57;
+        }
+
+        .bolinhas span:nth-child(2) {
+            background: #febc2e;
+        }
+
+        .bolinhas span:nth-child(3) {
+            background: #28c840;
+        }
+
+        .janela__titulo {
+            font-size: 0.88rem;
+            color: rgba(255, 255, 255, 0.72);
+        }
+
+        .janela__corpo {
+            padding: 1.5rem;
+        }
+
+        .linha-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            margin-bottom: 0.9rem;
+            color: #91d2c2;
+            font-family: var(--fonte-codigo);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .linha-kicker::before {
+            content: ">";
+            color: #f7b240;
+        }
+
+        .pipeline {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 0.9rem;
+        }
+
+        .pipeline li {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.85rem;
+            align-items: start;
+            padding: 0.85rem 0.95rem;
+            border-radius: var(--raio-md);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .pipeline li strong {
+            display: block;
+            margin-bottom: 0.18rem;
+            font-size: 0.96rem;
+        }
+
+        .pipeline li span {
+            color: rgba(255, 255, 255, 0.68);
+            font-size: 0.91rem;
+        }
+
+        .pipeline__numero {
+            width: 34px;
+            height: 34px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, rgba(216, 76, 45, 0.8), rgba(13, 138, 111, 0.8));
+            font-weight: 800;
+        }
+
+        .cartao-flutuante {
+            position: absolute;
+            z-index: 3;
+            max-width: 280px;
+            padding: 1rem 1.05rem;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid rgba(17, 25, 31, 0.08);
+            box-shadow: var(--sombra);
+        }
+
+        .cartao-flutuante h3 {
+            font-size: 1.12rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .cartao-flutuante p {
+            margin: 0;
+            color: var(--tinta-suave);
+            font-size: 0.96rem;
+        }
+
+        .cartao-flutuante--cima {
+            top: 72px;
+            right: -12px;
+            transform: rotate(4deg);
+        }
+
+        .cartao-flutuante--baixo {
+            left: -24px;
+            bottom: 36px;
+            transform: rotate(-5deg);
+        }
+
+        .cartao-flutuante__meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-bottom: 0.35rem;
+            color: var(--vermelho);
+            font-family: var(--fonte-codigo);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .secao {
+            position: relative;
+            padding: 4.6rem 0;
+        }
+
+        .secao__cabecalho {
+            display: grid;
+            gap: 0.85rem;
+            margin-bottom: 1.8rem;
+        }
+
+        .secao__cabecalho h2 {
+            max-width: 12ch;
+            font-size: clamp(2.2rem, 4.3vw, 4.4rem);
+        }
+
+        .secao__cabecalho p {
+            max-width: 66ch;
+            margin: 0;
+            color: var(--tinta-suave);
+            font-size: 1.03rem;
+        }
+
+        .secao--clara {
+            background: rgba(255, 255, 255, 0.45);
+            border: 1px solid rgba(17, 25, 31, 0.06);
+            border-radius: 40px;
+            padding-inline: 1.35rem;
+        }
+
+        .secao--contraste {
+            box-shadow: 0 0 0 100vmax rgba(255, 248, 236, 0.66);
+            clip-path: inset(0 -100vmax);
+        }
+
+        .secao--escura {
+            color: var(--claro);
+            box-shadow: 0 0 0 100vmax #10171d;
+            clip-path: inset(0 -100vmax);
+            background:
+                radial-gradient(circle at 10% 10%, rgba(216, 76, 45, 0.24), transparent 20%),
+                radial-gradient(circle at 88% 16%, rgba(13, 138, 111, 0.24), transparent 18%),
+                linear-gradient(180deg, #0f171d 0%, #131e25 100%);
+        }
+
+        .secao--escura .secao__cabecalho p,
+        .secao--escura .texto-suave,
+        .secao--escura .lista-livre li,
+        .secao--escura .endpoint__descricao,
+        .secao--escura .subtexto {
+            color: rgba(255, 255, 255, 0.68);
+        }
+
+        .manifesto__grade,
+        .painel-duplo,
+        .instalacao__grade,
+        .limites__grade,
+        .api__grade,
+        .testes__grade,
+        .producao__grade {
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .manifesto__grade {
+            grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+            align-items: start;
+        }
+
+        .manifesto__texto {
+            display: grid;
+            gap: 1.15rem;
+        }
+
+        .manifesto__texto p {
+            margin: 0;
+            font-size: 1.02rem;
+            color: var(--tinta-suave);
+        }
+
+        .painel-notas,
+        .grade-cartoes,
+        .grade-seguranca,
+        .testes__grade,
+        .producao__grade,
+        .limites__grade {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .painel-notas {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-self: stretch;
+        }
+
+        .cartao,
+        .caixa,
+        .bloco-teste,
+        .bloco-limite {
+            padding: 1.35rem;
+            border-radius: var(--raio-lg);
+            border: 1px solid var(--borda);
+            background: rgba(255, 255, 255, 0.72);
+            box-shadow: 0 12px 28px rgba(17, 25, 31, 0.06);
+        }
+
+        .cartao h3,
+        .caixa h3,
+        .bloco-teste h3,
+        .bloco-limite h3 {
+            margin-bottom: 0.55rem;
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+
+        .cartao p,
+        .caixa p,
+        .bloco-teste p,
+        .bloco-limite p {
+            margin: 0;
+            color: var(--tinta-suave);
+        }
+
+        .cartao__numero {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 42px;
+            height: 42px;
+            margin-bottom: 0.8rem;
+            padding-inline: 0.7rem;
+            border-radius: 14px;
+            background: rgba(22, 94, 216, 0.1);
+            color: var(--azul);
+            font-family: var(--fonte-codigo);
+            font-weight: 700;
+        }
+
+        .grade-cartoes {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .trilha {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        .etapa {
+            position: relative;
+            padding: 1.25rem;
+            border-radius: 26px;
+            border: 1px solid rgba(17, 25, 31, 0.09);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.66));
+            box-shadow: 0 16px 30px rgba(17, 25, 31, 0.05);
+        }
+
+        .etapa::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            right: -0.62rem;
+            width: 1.25rem;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(17, 25, 31, 0.28), transparent);
+        }
+
+        .etapa:last-child::after {
+            display: none;
+        }
+
+        .etapa__indice {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(216, 76, 45, 0.16), rgba(13, 138, 111, 0.16));
+            color: var(--vermelho);
+            font-family: var(--fonte-codigo);
+            font-weight: 700;
+        }
+
+        .etapa h3 {
+            margin: 0.85rem 0 0.55rem;
+            font-size: 1.1rem;
+        }
+
+        .etapa p {
+            margin: 0;
+            color: var(--tinta-suave);
+            font-size: 0.94rem;
+        }
+
+        .grade-seguranca {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .cartao--seguro {
+            background: rgba(255, 255, 255, 0.78);
+        }
+
+        .cartao--seguro .cartao__meta {
+            color: var(--verde);
+        }
+
+        .cartao__meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-bottom: 0.55rem;
+            font-family: var(--fonte-codigo);
+            font-size: 0.82rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .painel-duplo {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            margin-top: 1.2rem;
+        }
+
+        .lista-livre,
+        .lista-endpoints,
+        .lista-check {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 0.8rem;
+        }
+
+        .lista-livre li,
+        .lista-check li {
+            position: relative;
+            padding-left: 1.2rem;
+        }
+
+        .lista-livre li::before,
+        .lista-check li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0.62rem;
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--vermelho), var(--verde));
+        }
+
+        .api__grade {
+            grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+            align-items: start;
+        }
+
+        .api__lista {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .grupo-endpoints {
+            padding: 1.35rem;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .grupo-endpoints h3 {
+            margin-bottom: 0.85rem;
+            font-size: 1.22rem;
+        }
+
+        .lista-endpoints li {
+            display: grid;
+            gap: 0.32rem;
+            padding: 0.85rem 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .lista-endpoints li:first-child {
+            padding-top: 0;
+            border-top: 0;
+        }
+
+        .endpoint__linha {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            flex-wrap: wrap;
+        }
+
+        .endpoint__descricao {
+            font-size: 0.94rem;
+        }
+
+        .metodo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 66px;
+            padding: 0.35rem 0.65rem;
+            border-radius: 999px;
+            font-family: var(--fonte-codigo);
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .metodo--get {
+            background: rgba(13, 138, 111, 0.18);
+            color: #7ce2ca;
+        }
+
+        .metodo--post {
+            background: rgba(214, 161, 27, 0.18);
+            color: #ffd777;
+        }
+
+        .metodo--put {
+            background: rgba(22, 94, 216, 0.18);
+            color: #8fb8ff;
+        }
+
+        .metodo--delete {
+            background: rgba(216, 76, 45, 0.18);
+            color: #ff9d86;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            min-height: 32px;
+            padding: 0.35rem 0.7rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.76);
+            font-size: 0.83rem;
+        }
+
+        .exemplo {
+            padding: 1.25rem;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .abas {
+            display: flex;
+            gap: 0.7rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .aba,
+        .copiar {
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-radius: 999px;
+            transition:
+                transform 0.2s ease,
+                background 0.2s ease,
+                color 0.2s ease,
+                border-color 0.2s ease;
+        }
+
+        .aba {
+            min-height: 42px;
+            padding: 0.65rem 0.95rem;
+            color: rgba(255, 255, 255, 0.72);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .aba.ativa {
+            color: var(--escuro);
+            background: linear-gradient(135deg, #fff1db, #ffffff);
+            box-shadow: 0 12px 28px rgba(17, 25, 31, 0.18);
+        }
+
+        .painel-exemplo {
+            display: none;
+        }
+
+        .painel-exemplo.ativo {
+            display: block;
+        }
+
+        .codigo {
+            margin: 0;
+            padding: 1.2rem;
+            overflow-x: auto;
+            border-radius: 22px;
+            background: rgba(6, 10, 14, 0.92);
+            color: #d4f6ee;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .instalacao__grade {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .terminal {
+            padding: 1.15rem;
+            border-radius: 30px;
+            background: linear-gradient(180deg, rgba(15, 23, 29, 0.96), rgba(18, 31, 38, 0.96));
+            color: #f3fbff;
+            box-shadow: 0 34px 70px rgba(17, 25, 31, 0.16);
+        }
+
+        .terminal__titulo {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .terminal__titulo h3 {
+            font-size: 1.25rem;
+        }
+
+        .subtexto {
+            margin: 0;
+            color: rgba(243, 251, 255, 0.68);
+        }
+
+        .terminal__bloco + .terminal__bloco {
+            margin-top: 0.9rem;
+        }
+
+        .terminal__barra {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+            padding: 0.78rem 0.95rem;
+            border-radius: 18px 18px 0 0;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 0;
+        }
+
+        .terminal__arquivo {
+            font-family: var(--fonte-codigo);
+            font-size: 0.85rem;
+            color: rgba(243, 251, 255, 0.72);
+        }
+
+        .copiar {
+            min-height: 36px;
+            padding: 0.45rem 0.8rem;
+            color: var(--claro);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .copiar[data-copiado="true"] {
+            background: rgba(13, 138, 111, 0.22);
+            color: #aef6e4;
+        }
+
+        .terminal pre {
+            margin: 0;
+            padding: 1rem;
+            overflow-x: auto;
+            border-radius: 0 0 18px 18px;
+            background: rgba(7, 11, 14, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #d4f6ee;
+        }
+
+        .producao__grade {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .testes__grade {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .bloco-teste {
+            min-height: 100%;
+        }
+
+        .bloco-teste__selo {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-bottom: 0.65rem;
+            font-family: var(--fonte-codigo);
+            font-size: 0.82rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--azul);
+        }
+
+        .limites__grade {
+            grid-template-columns: minmax(0, 0.95fr) minmax(300px, 0.85fr);
+            align-items: start;
+        }
+
+        .lista-limites {
+            list-style: none;
+            padding: 0;
+            margin: 1rem 0 0;
+            display: grid;
+            gap: 0.85rem;
+        }
+
+        .lista-limites li {
+            padding: 1rem 1.05rem;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(17, 25, 31, 0.08);
+        }
+
+        .rodape {
+            width: min(1240px, calc(100% - 24px));
+            margin: 0 auto;
+            padding: 0 0 3.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            color: var(--tinta-suave);
+        }
+
+        .rodape__acoes {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+            flex-wrap: wrap;
+        }
+
+        .revelar {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .js .revelar {
+            opacity: 0;
+            transform: translateY(24px);
+            transition:
+                opacity 0.65s ease,
+                transform 0.65s ease;
+        }
+
+        .js .revelar.visivel {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 1160px) {
+            .hero {
+                grid-template-columns: 1fr;
+                padding-top: 4.6rem;
+            }
+
+            .hero__painel {
+                min-height: auto;
+                padding-top: 2rem;
+            }
+
+            .cartao-flutuante {
+                position: relative;
+                max-width: none;
+            }
+
+            .cartao-flutuante--cima,
+            .cartao-flutuante--baixo {
+                inset: auto;
+                transform: none;
+                margin-top: 1rem;
+            }
+
+            .trilha {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .grade-cartoes,
+            .grade-seguranca,
+            .producao__grade,
+            .testes__grade {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .api__grade,
+            .manifesto__grade,
+            .instalacao__grade,
+            .limites__grade {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 920px) {
+            .cabecalho {
+                position: static;
+                border-radius: 32px;
+                padding: 1rem;
+                flex-direction: column;
+            }
+
+            .hero {
+                padding-top: 2.4rem;
+            }
+
+            h1 {
+                max-width: none;
+            }
+
+            .hero__marca-gigante {
+                position: relative;
+                inset: auto;
+                margin-bottom: 1rem;
+                transform: none;
+            }
+
+            .painel-notas,
+            .painel-duplo,
+            .producao__grade,
+            .testes__grade,
+            .grade-cartoes,
+            .grade-seguranca {
+                grid-template-columns: 1fr;
+            }
+
+            .trilha {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .navegacao,
+            .acoes-topo,
+            .hero__acoes,
+            .abas {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .hero__selos {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .trilha {
+                grid-template-columns: 1fr;
+            }
+
+            .etapa::after {
+                display: none;
+            }
+
+            .rodape {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .hero__selos {
+                grid-template-columns: 1fr;
+            }
+
+            .marca {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .secao,
+            .hero {
+                width: min(1240px, calc(100% - 18px));
+            }
+
+            .secao {
+                padding: 3.5rem 0;
+            }
+
+            .cartao,
+            .caixa,
+            .bloco-teste,
+            .bloco-limite,
+            .terminal,
+            .janela,
+            .grupo-endpoints,
+            .exemplo {
+                border-radius: 22px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto;
+            }
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+
+            .js .revelar {
+                opacity: 1;
+                transform: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteudo</a>
+
+    <header class="cabecalho revelar">
+        <a class="marca" href="#topo" aria-label="Parrot PHP">
+            <span class="marca__selo">PP</span>
+            <span class="marca__texto">
+                <span class="marca__titulo">Parrot PHP</span>
+                <span class="marca__subtitulo">Micro-framework REST para APIs JSON</span>
+            </span>
+        </a>
+
+        <nav class="navegacao" aria-label="Navegacao principal">
+            <a href="#diferenciais">Diferenciais</a>
+            <a href="#arquitetura">Arquitetura</a>
+            <a href="#seguranca">Seguranca</a>
+            <a href="#api">API</a>
+            <a href="#instalacao">Instalacao</a>
+            <a href="#producao">Producao</a>
+        </nav>
+
+        <div class="acoes-topo">
+            <a class="botao-secundario" href="#testes">Ver testes</a>
+            <a class="botao" href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+    </header>
+
+    <main id="conteudo">
+        <section class="hero" id="topo">
+            <div class="hero__texto revelar">
+                <p class="etiqueta">PHP 8.4 | PSR-7 / PSR-15 | JSON API</p>
+                <h1>REST sem peso morto.</h1>
+                <p class="hero__lead">
+                    Parrot PHP foi construído para quem quer um fluxo HTTP visível, uma base enxuta e um comportamento previsível em produção. O kernel é pequeno, o pipeline é explícito e a segurança já nasce alinhada a cookie <code>HttpOnly</code>, JWT manual, rate limit e MySQL real nos testes.
+                </p>
+                <div class="hero__acoes">
+                    <a class="botao" href="#arquitetura">Ver o fluxo real</a>
+                    <a class="botao-secundario" href="#instalacao">Instalar agora</a>
+                </div>
+                <ul class="hero__selos" aria-label="Stack principal">
+                    <li>FastRoute para roteamento</li>
+                    <li>PHP-DI para injecao de dependencias</li>
+                    <li>Nyholm PSR-7 e PSR-15</li>
+                    <li>Eloquent como ORM principal</li>
+                    <li>JWT via cookie <code>token</code></li>
+                    <li>Testes com MySQL, sem SQLite</li>
+                </ul>
+            </div>
+
+            <div class="hero__painel revelar">
+                <div class="hero__marca-gigante" aria-hidden="true">PARROT</div>
+
+                <article class="janela" aria-label="Pipeline principal do framework">
+                    <div class="janela__topo">
+                        <div class="bolinhas" aria-hidden="true">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="janela__titulo">pipeline.http</div>
+                    </div>
+                    <div class="janela__corpo">
+                        <div class="linha-kicker">Fluxo implementado hoje</div>
+                        <ol class="pipeline">
+                            <li>
+                                <span class="pipeline__numero">01</span>
+                                <div>
+                                    <strong><code>public/index.php</code></strong>
+                                    <span>Bootstrap, autoload, leitura de ambiente, container e banco.</span>
+                                </div>
+                            </li>
+                            <li>
+                                <span class="pipeline__numero">02</span>
+                                <div>
+                                    <strong><code>Application</code></strong>
+                                    <span>Monta a request PSR-7 e orquestra o ciclo de vida da requisicao.</span>
+                                </div>
+                            </li>
+                            <li>
+                                <span class="pipeline__numero">03</span>
+                                <div>
+                                    <strong>Middlewares globais</strong>
+                                    <span>Erro, headers, rate limit, CORS e CSRF passam antes do controller.</span>
+                                </div>
+                            </li>
+                            <li>
+                                <span class="pipeline__numero">04</span>
+                                <div>
+                                    <strong><code>FastRouteRouter</code></strong>
+                                    <span>Resolve rota, atributos dinamicos, middleware de rota e controller final.</span>
+                                </div>
+                            </li>
+                            <li>
+                                <span class="pipeline__numero">05</span>
+                                <div>
+                                    <strong>Controller -> model/resource</strong>
+                                    <span>Validacao simples, Eloquent e resposta JSON padronizada.</span>
+                                </div>
+                            </li>
+                        </ol>
+                    </div>
+                </article>
+
+                <article class="cartao-flutuante cartao-flutuante--cima">
+                    <div class="cartao-flutuante__meta">Producao</div>
+                    <h3>Redis deixa de ser opcional.</h3>
+                    <p>Em <code>production</code>, <code>array</code>, <code>memory</code> e <code>apcu</code> sao recusados. Cache distribuido vira requisito operacional real.</p>
+                </article>
+
+                <article class="cartao-flutuante cartao-flutuante--baixo">
+                    <div class="cartao-flutuante__meta">Seguranca</div>
+                    <h3>Cookie em vez de bearer espalhado.</h3>
+                    <p>O token e lido exclusivamente do cookie <code>token</code>, com <code>HttpOnly</code>, <code>SameSite=Strict</code> e <code>Secure</code> quando aplicavel.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="secao secao--clara" id="diferenciais">
+            <div class="secao__cabecalho revelar">
+                <p class="etiqueta">Diferenciais tecnicos</p>
+                <h2>Mostra o encanamento em vez de vender magia.</h2>
+                <p>
+                    O valor do Parrot PHP esta na simplicidade controlada: fluxo facil de seguir, contratos padrao de mercado, autenticacao com validacao explicita e uma base que nao esconde custo operacional atras de convencoes extensas.
+                </p>
+            </div>
+
+            <div class="manifesto__grade">
+                <div class="manifesto__texto revelar">
+                    <p>
+                        O framework foi desenhado para entregar uma base REST moderna sem carregar o peso de um full stack. Em vez de empilhar abstrações proprietarias, ele usa PSR-7, PSR-15 e container padrao para que a leitura do request ate a resposta continue curta, objetiva e depuravel.
+                    </p>
+                    <p>
+                        Essa escolha aparece em tudo: roteamento via FastRoute, DI em <code>config/container.php</code>, ORM via Eloquent fora do Laravel, JWT proprio em <code>HS256</code> e respostas JSON padronizadas por <code>Response</code> e <code>Resource</code>.
+                    </p>
+                    <p>
+                        O resultado nao e um experimento minimalista sem protecao. A base atual ja traz blacklist persistente de logout, CSRF ajustado ao uso de cookie, protecao contra IDOR, headers de seguranca, rate limit por usuario autenticado e suite integrada com banco real.
+                    </p>
+                </div>
+
+                <div class="painel-notas">
+                    <article class="cartao revelar">
+                        <div class="cartao__numero">PSR</div>
+                        <h3>Contratos reconheciveis</h3>
+                        <p>PSR-4 no autoload, PSR-7 nas mensagens HTTP, PSR-15 na pipeline e container padrao para DI.</p>
+                    </article>
+                    <article class="cartao revelar">
+                        <div class="cartao__numero">JWT</div>
+                        <h3>Validacao sem caixa-preta</h3>
+                        <p><code>JwtService::validarToken()</code> checa assinatura, <code>typ</code>, <code>alg</code>, <code>iss</code>, <code>aud</code>, <code>sub</code>, <code>nbf</code>, <code>iat</code> e <code>exp</code>.</p>
+                    </article>
+                    <article class="cartao revelar">
+                        <div class="cartao__numero">DB</div>
+                        <h3>Eloquent como base ativa</h3>
+                        <p>Controllers, models e camada HTTP usam Eloquent. SQL raw fica restrito a seed e infraestrutura de testes.</p>
+                    </article>
+                    <article class="cartao revelar">
+                        <div class="cartao__numero">QA</div>
+                        <h3>Teste contra banco real</h3>
+                        <p>A suite roda em <code>APP_ENV=testing</code> com MySQL, recria tabelas a cada teste e nao reintroduz SQLite.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="secao" id="arquitetura">
+            <div class="secao__cabecalho revelar">
+                <p class="etiqueta">Arquitetura atual</p>
+                <h2>Um pipeline curto o bastante para caber na cabeca.</h2>
+                <p>
+                    O fluxo principal implementado hoje segue uma ordem direta: entrada unica, aplicacao, middlewares, roteamento, controller, model ou resource e resposta JSON. Isso favorece leitura rapida, debugging simples e evolucao gradual das camadas.
+                </p>
+            </div>
+
+            <div class="trilha">
+                <article class="etapa revelar">
+                    <span class="etapa__indice">01</span>
+                    <h3>Bootstrap</h3>
+                    <p>Registra fallback de excecao, carrega Composer, monta o container e inicializa o <code>DatabaseCapsule</code>.</p>
+                </article>
+                <article class="etapa revelar">
+                    <span class="etapa__indice">02</span>
+                    <h3>Application</h3>
+                    <p>Cria a request a partir das superglobais, carrega middlewares globais e envia a resposta final.</p>
+                </article>
+                <article class="etapa revelar">
+                    <span class="etapa__indice">03</span>
+                    <h3>MiddlewareQueue</h3>
+                    <p>Executa a pipeline no formato onion, permitindo interceptacao antes e depois do proximo passo.</p>
+                </article>
+                <article class="etapa revelar">
+                    <span class="etapa__indice">04</span>
+                    <h3>FastRouteRouter</h3>
+                    <p>Registra metodos e caminhos, injeta atributos dinamicos e resolve middlewares de rota.</p>
+                </article>
+                <article class="etapa revelar">
+                    <span class="etapa__indice">05</span>
+                    <h3>Invoker</h3>
+                    <p>Instancia o controller via container e injeta a request no metodo final sem acoplamento manual.</p>
+                </article>
+                <article class="etapa revelar">
+                    <span class="etapa__indice">06</span>
+                    <h3>Controllers</h3>
+                    <p>Executam validacao, autorizacao e orquestram <code>UserModel</code>, <code>TokenRevogado</code> e resources.</p>
+                </article>
+                <article class="etapa revelar">
+                    <span class="etapa__indice">07</span>
+                    <h3>JSON</h3>
+                    <p><code>Response</code> e <code>Resource</code> padronizam itens, colecoes, mensagens e erros em um contrato consistente.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="secao secao--contraste" id="seguranca">
+            <div class="secao__cabecalho revelar">
+                <p class="etiqueta">Seguranca implementada</p>
+                <h2>Cookie seguro, blacklist persistente e controle de acesso real.</h2>
+                <p>
+                    O escopo e enxuto, mas a base nao e permissiva. O codigo atual combina autenticacao manual, revogacao persistida, rate limit sensivel ao usuario autenticado, CORS com whitelist, CSRF para escritas autenticadas e protecao contra IDOR em regras de dominio.
+                </p>
+            </div>
+
+            <div class="grade-seguranca">
+                <article class="cartao cartao--seguro revelar">
+                    <div class="cartao__meta">JWT</div>
+                    <h3>Token entregue no cookie <code>token</code></h3>
+                    <p><code>HttpOnly</code>, <code>SameSite=Strict</code>, <code>Path=/</code> e <code>Secure</code> quando a conexao e HTTPS, producao ou proxy confiavel sinaliza <code>X-Forwarded-Proto=https</code>.</p>
+                </article>
+                <article class="cartao cartao--seguro revelar">
+                    <div class="cartao__meta">Blacklist</div>
+                    <h3>Logout com revogacao persistida</h3>
+                    <p><code>TokenRevogado</code> grava o <code>jti</code> em <code>tokens_revogados</code>, usa cache configuravel e ainda mantem cache local por processo.</p>
+                </article>
+                <article class="cartao cartao--seguro revelar">
+                    <div class="cartao__meta">Rate limit</div>
+                    <h3>Prioriza o <code>sub</code> do JWT valido</h3>
+                    <p>Usuarios autenticados sao identificados pelo token; sem JWT valido, o fallback e IP. O login usa alias proprio com 5 tentativas por 900 segundos.</p>
+                </article>
+                <article class="cartao cartao--seguro revelar">
+                    <div class="cartao__meta">CORS + CSRF</div>
+                    <h3>Defesa alinhada ao uso de cookie</h3>
+                    <p>CORS responde preflight e limita origens conhecidas. CSRF bloqueia escritas autenticadas que chegam de origem fora da whitelist.</p>
+                </article>
+                <article class="cartao cartao--seguro revelar">
+                    <div class="cartao__meta">Headers</div>
+                    <h3>Camada de hardening por padrao</h3>
+                    <p><code>nosniff</code>, <code>DENY</code>, <code>Referrer-Policy</code>, <code>Content-Security-Policy</code>, <code>Permissions-Policy</code>, <code>no-store</code> e HSTS quando aplicavel.</p>
+                </article>
+                <article class="cartao cartao--seguro revelar">
+                    <div class="cartao__meta">Autorizacao</div>
+                    <h3>Admin nao vira default silencioso</h3>
+                    <p><code>UserController</code> diferencia <code>admin</code> de usuario comum, valida <code>id</code> positivo e impede IDOR ao exigir titularidade quando cabivel.</p>
+                </article>
+            </div>
+
+            <div class="painel-duplo">
+                <article class="caixa revelar">
+                    <h3>Ordem real dos middlewares globais</h3>
+                    <ul class="lista-livre">
+                        <li><code>ErrorHandlerMiddleware</code></li>
+                        <li><code>SecurityHeadersMiddleware</code></li>
+                        <li><code>RateLimitMiddleware</code></li>
+                        <li><code>CorsMiddleware</code></li>
+                        <li><code>CsrfGuardMiddleware</code></li>
+                    </ul>
+                </article>
+                <article class="caixa revelar">
+                    <h3>Regras de acesso ja implementadas</h3>
+                    <ul class="lista-livre">
+                        <li><code>GET /api/usuarios</code> e exclusivo de <code>admin</code>.</li>
+                        <li>Usuario comum so acessa, altera ou remove o proprio recurso.</li>
+                        <li>Email e senha exigem <code>senha_atual</code> na atualizacao.</li>
+                        <li>Usuarios criados pela API entram sempre como <code>tipo=user</code>.</li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+
+        <section class="secao secao--escura" id="api">
+            <div class="secao__cabecalho revelar">
+                <p class="etiqueta">API implementada hoje</p>
+                <h2>Um dominio pequeno, mas ja operavel.</h2>
+                <p>
+                    O repositório atual entrega autenticacao, endpoint <code>/me</code>, CRUD de usuarios com soft delete, paginação, revogacao de token e respostas JSON padronizadas. O foco esta em ter uma base segura e previsivel para evoluir.
+                </p>
+            </div>
+
+            <div class="api__grade">
+                <div class="api__lista">
+                    <article class="grupo-endpoints revelar">
+                        <h3>Autenticacao</h3>
+                        <ul class="lista-endpoints">
+                            <li>
+                                <div class="endpoint__linha">
+                                    <span class="metodo metodo--post">POST</span>
+                                    <code>/api/auth/login</code>
+                                    <span class="tag">rate_limit_login</span>
+                                </div>
+                                <div class="endpoint__descricao">Autentica por email e senha, gera JWT e devolve o usuario com o cookie <code>token</code>.</div>
+                            </li>
+                            <li>
+                                <div class="endpoint__linha">
+                                    <span class="metodo metodo--post">POST</span>
+                                    <code>/api/auth/logout</code>
+                                    <span class="tag">JwtAuthMiddleware</span>
+                                </div>
+                                <div class="endpoint__descricao">Revoga o token atual, limpa o cookie e remove expirados da blacklist.</div>
+                            </li>
+                            <li>
+                                <div class="endpoint__linha">
+                                    <span class="metodo metodo--get">GET</span>
+                                    <code>/api/auth/me</code>
+                                    <span class="tag">JwtAuthMiddleware</span>
+                                </div>
+                                <div class="endpoint__descricao">Retorna os dados do usuario autenticado a partir do payload ja validado.</div>
+                            </li>
+                        </ul>
+                    </article>
+
+                    <article class="grupo-endpoints revelar">
+                        <h3>Usuarios</h3>
+                        <ul class="lista-endpoints">
+                            <li>
+                                <div class="endpoint__linha">
+                                    <span class="metodo metodo--get">GET</span>
+                                    <code>/api/usuarios</code>
+                                    <span class="tag">somente admin</span>
+                                </div>
+                                <div class="endpoint__descricao">Lista usuarios com <code>page</code> padrao 1 e <code>limit</code> padrao 20, maximo 100.</div>
+                            </li>
+                            <li>
+                                <div class="endpoint__linha">
+                                    <span class="metodo metodo--get">GET</span>
+                                    <code>/api/usuarios/{id}</code>
+                                </div>
+                                <div class="endpoint__descricao">Admin acessa qualquer usuario; usuario comum so acessa o proprio registro.</div>
+                            </li>
+                            <li>
+                                <div class="endpoint__linha">
+                                    <span class="metodo metodo--post">POST</span>
+                                    <code>/api/usuarios</code>
+                                    <span class="tag">somente admin</span>
+                                </div>
+                                <div class="endpoint__descricao">Cria novo usuario comum. O campo <code>tipo</code> nao e promovido pelo cliente.</div>
+                            </li>
+                            <li>
+                                <div class="endpoint__linha">
+                                    <span class="metodo metodo--put">PUT</span>
+                                    <code>/api/usuarios/{id}</code>
+                                </div>
+                                <div class="endpoint__descricao">Atualiza <code>nome</code>, <code>email</code> e <code>senha</code>, descartando campos fora da whitelist.</div>
+                            </li>
+                            <li>
+                                <div class="endpoint__linha">
+                                    <span class="metodo metodo--delete">DELETE</span>
+                                    <code>/api/usuarios/{id}</code>
+                                </div>
+                                <div class="endpoint__descricao">Aplica soft delete em <code>deletado_em</code> com a mesma regra de acesso por titularidade ou admin.</div>
+                            </li>
+                        </ul>
+                    </article>
+                </div>
+
+                <div class="exemplo revelar">
+                    <div class="abas" role="tablist" aria-label="Exemplos de payload">
+                        <button class="aba ativa" type="button" role="tab" aria-selected="true" data-painel-alvo="login">Login</button>
+                        <button class="aba" type="button" role="tab" aria-selected="false" data-painel-alvo="usuarios">Usuarios</button>
+                        <button class="aba" type="button" role="tab" aria-selected="false" data-painel-alvo="claims">Claims JWT</button>
+                    </div>
+
+                    <div class="painel-exemplo ativo" data-painel="login">
+                        <pre class="codigo"><code>{
+  "data": {
+    "id": 1,
+    "nome": "Administrador",
+    "email": "admin@parrot.com",
+    "tipo": "admin"
+  },
+  "message": "Login realizado com sucesso"
+}</code></pre>
+                    </div>
+
+                    <div class="painel-exemplo" data-painel="usuarios">
+                        <pre class="codigo"><code>{
+  "data": [],
+  "meta": {
+    "pagina_atual": 1,
+    "por_pagina": 20,
+    "total_registros": 0,
+    "total_paginas": 0
+  }
+}</code></pre>
+                    </div>
+
+                    <div class="painel-exemplo" data-painel="claims">
+                        <pre class="codigo"><code>{
+  "sub": 1,
+  "email": "admin@parrot.com",
+  "tipo": "admin",
+  "jti": "token-unico",
+  "iss": "http://localhost:8000",
+  "aud": "parrot-api",
+  "iat": 1712055600,
+  "nbf": 1712055600,
+  "exp": 1712059200
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="secao" id="instalacao">
+            <div class="secao__cabecalho revelar">
+                <p class="etiqueta">Instalacao e ambiente</p>
+                <h2>Abre rapido, sobe rapido, testa com o banco certo.</h2>
+                <p>
+                    O setup minimo do projeto e direto: clonar, instalar dependencias, rodar migrations, popular o admin inicial e subir o servidor embutido do PHP ou o Caddy do proprio repositório.
+                </p>
+            </div>
+
+            <div class="instalacao__grade">
+                <article class="terminal revelar">
+                    <div class="terminal__titulo">
+                        <div>
+                            <h3>Bootstrap local</h3>
+                            <p class="subtexto">Instalacao, migrations, seed e execucao.</p>
+                        </div>
+                    </div>
+
+                    <div class="terminal__bloco">
+                        <div class="terminal__barra">
+                            <span class="terminal__arquivo">setup.sh</span>
+                            <button class="copiar" type="button" data-copiar="git clone https://github.com/arthur-oliveira-oficial/parrot-php.git
+cd parrot-php
+composer install">Copiar</button>
+                        </div>
+                        <pre><code>git clone https://github.com/arthur-oliveira-oficial/parrot-php.git
+cd parrot-php
+composer install</code></pre>
+                    </div>
+
+                    <div class="terminal__bloco">
+                        <div class="terminal__barra">
+                            <span class="terminal__arquivo">database.sh</span>
+                            <button class="copiar" type="button" data-copiar="php database/scripts/migrate.php
+php database/scripts/seed.php">Copiar</button>
+                        </div>
+                        <pre><code>php database/scripts/migrate.php
+php database/scripts/seed.php</code></pre>
+                    </div>
+
+                    <div class="terminal__bloco">
+                        <div class="terminal__barra">
+                            <span class="terminal__arquivo">serve.sh</span>
+                            <button class="copiar" type="button" data-copiar="php -S localhost:8000 -t public">Copiar</button>
+                        </div>
+                        <pre><code>php -S localhost:8000 -t public</code></pre>
+                    </div>
+                </article>
+
+                <article class="terminal revelar">
+                    <div class="terminal__titulo">
+                        <div>
+                            <h3>Configuracao minima</h3>
+                            <p class="subtexto">O container usa <code>DB_DATABASE</code> com fallback para <code>DB_NAME</code>.</p>
+                        </div>
+                    </div>
+
+                    <div class="terminal__bloco">
+                        <div class="terminal__barra">
+                            <span class="terminal__arquivo">.env</span>
+                            <button class="copiar" type="button" data-copiar="APP_ENV=development
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+DB_DRIVER=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=parrot_db
+DB_DATABASE=parrot_db
+DB_USER=root
+DB_PASSWORD=
+
+JWT_SECRET=troque_esta_chave
+JWT_EXPIRY=3600
+JWT_ISSUER=http://localhost:8000
+JWT_AUDIENCE=parrot-api">Copiar</button>
+                        </div>
+                        <pre><code>APP_ENV=development
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+DB_DRIVER=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=parrot_db
+DB_DATABASE=parrot_db
+DB_USER=root
+DB_PASSWORD=
+
+JWT_SECRET=troque_esta_chave
+JWT_EXPIRY=3600
+JWT_ISSUER=http://localhost:8000
+JWT_AUDIENCE=parrot-api</code></pre>
+                    </div>
+
+                    <div class="terminal__bloco">
+                        <div class="terminal__barra">
+                            <span class="terminal__arquivo">cache.env</span>
+                            <button class="copiar" type="button" data-copiar="CACHE_STORE=auto
+CACHE_PREFIX=parrot:
+REDIS_SCHEME=tcp
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_DATABASE=0">Copiar</button>
+                        </div>
+                        <pre><code>CACHE_STORE=auto
+CACHE_PREFIX=parrot:
+REDIS_SCHEME=tcp
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_DATABASE=0</code></pre>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="secao secao--contraste" id="producao">
+            <div class="secao__cabecalho revelar">
+                <p class="etiqueta">Producao e operacao</p>
+                <h2>Comportamento mais rigido quando sai da bancada.</h2>
+                <p>
+                    Em producao, o Parrot PHP fica menos tolerante com configuracoes improvisadas. O processo deve receber variaveis do ambiente, Redis passa a ser obrigatorio e a configuracao de proxy e HTTPS deixa de ser detalhe.
+                </p>
+            </div>
+
+            <div class="producao__grade">
+                <article class="cartao revelar">
+                    <div class="cartao__numero">ENV</div>
+                    <h3>Sem carregar <code>.env</code> automaticamente</h3>
+                    <p><code>public/index.php</code> nao le o arquivo quando <code>APP_ENV=production</code>. O ambiente precisa chegar pronto ao processo.</p>
+                </article>
+                <article class="cartao revelar">
+                    <div class="cartao__numero">REDIS</div>
+                    <h3>Cache distribuido deixa de ser opcao</h3>
+                    <p><code>CACHE_STORE=redis</code> e a configuracao minima recomendada para sustentar rate limit e blacklist distribuidos.</p>
+                </article>
+                <article class="cartao revelar">
+                    <div class="cartao__numero">EDGE</div>
+                    <h3>Proxy confiavel precisa ser declarado</h3>
+                    <p><code>TRUSTED_PROXY_IPS</code> controla quando <code>X-Forwarded-For</code> e <code>X-Forwarded-Proto</code> podem ser confiados.</p>
+                </article>
+            </div>
+
+            <div class="painel-duplo">
+                <article class="caixa revelar">
+                    <h3>Checklist minimo de operacao</h3>
+                    <ul class="lista-check">
+                        <li>Definir <code>JWT_SECRET</code> forte.</li>
+                        <li>Publicar apenas origens conhecidas em <code>CORS_ALLOWED_ORIGINS</code>.</li>
+                        <li>Configurar <code>APP_URL</code> corretamente.</li>
+                        <li>Manter HTTPS e Redis disponiveis.</li>
+                    </ul>
+                </article>
+                <article class="caixa revelar">
+                    <h3>Defaults reais do rate limit</h3>
+                    <ul class="lista-check">
+                        <li>Global: 60 requisicoes por 60 segundos.</li>
+                        <li>Login: 5 tentativas por 900 segundos.</li>
+                        <li>Resposta inclui <code>Retry-After</code> e cabecalhos <code>X-RateLimit-*</code>.</li>
+                        <li><code>OPTIONS</code> fica fora da contagem.</li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+
+        <section class="secao" id="testes">
+            <div class="secao__cabecalho revelar">
+                <p class="etiqueta">Testes e garantias</p>
+                <h2>Integracao de verdade, sem maquiar o banco.</h2>
+                <p>
+                    A suite automatizada cobre autenticacao, CRUD, cache, restricoes de producao, confianca em proxy reverso e protecoes de origem. O pressuposto e claro: testar com MySQL real, criar o banco se necessario e reconstruir tabelas a cada caso.
+                </p>
+            </div>
+
+            <div class="testes__grade">
+                <article class="bloco-teste revelar">
+                    <div class="bloco-teste__selo">Banco</div>
+                    <h3>MySQL em <code>parrot_test</code></h3>
+                    <p><code>phpunit.xml</code> fixa <code>APP_ENV=testing</code> e <code>DB_DRIVER=mysql</code>. SQLite nao entra como atalho.</p>
+                </article>
+                <article class="bloco-teste revelar">
+                    <div class="bloco-teste__selo">Ciclo</div>
+                    <h3>Schema recriado a cada teste</h3>
+                    <p><code>tests/TestCase.php</code> cria o banco se necessario, executa migrations e roda os seeds em toda execucao.</p>
+                </article>
+                <article class="bloco-teste revelar">
+                    <div class="bloco-teste__selo">Cobertura</div>
+                    <h3>Autenticacao e dominio</h3>
+                    <p>Login, logout, revogacao, endpoint <code>/me</code>, CRUD de usuarios, restricao de admin, IDOR e exigencia de senha atual.</p>
+                </article>
+                <article class="bloco-teste revelar">
+                    <div class="bloco-teste__selo">Operacao</div>
+                    <h3>Comportamento em producao</h3>
+                    <p>Cache em producao, proxy confiavel, bloqueio de escrita autenticada com origem externa e limites de taxa tambem entram na suite.</p>
+                </article>
+            </div>
+
+            <div class="instalacao__grade" style="margin-top: 1.25rem;">
+                <article class="terminal revelar">
+                    <div class="terminal__titulo">
+                        <div>
+                            <h3>Executar a suite</h3>
+                            <p class="subtexto">Comandos padrao usados no repositório.</p>
+                        </div>
+                    </div>
+                    <div class="terminal__bloco">
+                        <div class="terminal__barra">
+                            <span class="terminal__arquivo">phpunit.sh</span>
+                            <button class="copiar" type="button" data-copiar="./vendor/bin/phpunit
+./vendor/bin/phpunit --filter AuthTest">Copiar</button>
+                        </div>
+                        <pre><code>./vendor/bin/phpunit
+./vendor/bin/phpunit --filter AuthTest</code></pre>
+                    </div>
+                </article>
+
+                <article class="caixa revelar" style="align-self: stretch;">
+                    <h3>O que o site nao promete alem do codigo</h3>
+                    <ul class="lista-livre">
+                        <li>Nao fala em plugins, CLI propria ou scheduler porque o repositório atual nao entrega isso.</li>
+                        <li>Nao empurra <code>Authorization: Bearer</code> como autenticacao principal de rotas protegidas.</li>
+                        <li>Nao vende geracao automatica de OpenAPI ou camada administrativa pronta.</li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+
+        <section class="secao secao--clara" id="escopo">
+            <div class="secao__cabecalho revelar">
+                <p class="etiqueta">Escopo atual</p>
+                <h2>Base segura para crescer, sem fingir que ja e uma plataforma.</h2>
+                <p>
+                    O Parrot PHP entrega hoje um nucleo funcional e seguro para API JSON. O que ainda nao existe tambem faz parte da proposta: o projeto escolhe escopo enxuto para manter previsibilidade e clareza de evolucao.
+                </p>
+            </div>
+
+            <div class="limites__grade">
+                <article class="bloco-limite revelar">
+                    <h3>Fora do escopo atual</h3>
+                    <ul class="lista-limites">
+                        <li>Sistema de modulos ou plugins do framework.</li>
+                        <li>Refresh token e autenticacao principal via <code>Authorization: Bearer</code>.</li>
+                        <li>Filas, eventos de dominio ou scheduler.</li>
+                        <li>Documentacao OpenAPI gerada automaticamente.</li>
+                        <li>Camada administrativa pronta.</li>
+                        <li>Abstracao de CLI propria alem dos scripts de banco.</li>
+                    </ul>
+                </article>
+
+                <article class="bloco-limite revelar">
+                    <h3>O que ja sustenta a proposta</h3>
+                    <ul class="lista-check">
+                        <li>Fluxo HTTP simples de seguir.</li>
+                        <li>Uso de PSR em vez de contratos proprietarios.</li>
+                        <li>JWT proprio com validacao explicita.</li>
+                        <li>Autenticacao por cookie <code>HttpOnly</code>.</li>
+                        <li>Blacklist persistente de logout.</li>
+                        <li>Producao com cache distribuido obrigatorio.</li>
+                        <li>Testes integrados com banco real.</li>
+                    </ul>
+                    <div class="hero__acoes" style="margin-top: 1.25rem;">
+                        <a class="botao" href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank" rel="noreferrer">Explorar o repositorio</a>
+                        <a class="botao-secundario" href="#topo">Voltar ao topo</a>
+                    </div>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <footer class="rodape">
+        <div>
+            <strong>Parrot PHP</strong><br>
+            Micro-framework REST em PHP 8.4 para APIs JSON com fluxo explicito e base operacional enxuta.
+        </div>
+        <div class="rodape__acoes">
+            <a href="#arquitetura">Fluxo</a>
+            <a href="#api">API</a>
+            <a href="#instalacao">Instalacao</a>
+            <a href="https://github.com/arthur-oliveira-oficial/parrot-php" target="_blank" rel="noreferrer">Repositorio</a>
+            <span>&copy; <span id="ano-atual"></span></span>
+        </div>
+    </footer>
+
+    <script>
+        const botoesAba = document.querySelectorAll(".aba");
+        const paineisExemplo = document.querySelectorAll(".painel-exemplo");
+        const botoesCopiar = document.querySelectorAll(".copiar");
+        const elementosRevelar = document.querySelectorAll(".revelar");
+        const linksNavegacao = document.querySelectorAll(".navegacao a");
+        const secoesMonitoradas = document.querySelectorAll("main section[id]");
+        const campoAno = document.getElementById("ano-atual");
+
+        if (campoAno) {
+            campoAno.textContent = String(new Date().getFullYear());
+        }
+
+        botoesAba.forEach((botao) => {
+            botao.addEventListener("click", () => {
+                const alvo = botao.dataset.painelAlvo;
+
+                botoesAba.forEach((aba) => {
+                    const ativa = aba === botao;
+                    aba.classList.toggle("ativa", ativa);
+                    aba.setAttribute("aria-selected", ativa ? "true" : "false");
+                });
+
+                paineisExemplo.forEach((painel) => {
+                    painel.classList.toggle("ativo", painel.dataset.painel === alvo);
+                });
+            });
+        });
+
+        botoesCopiar.forEach((botao) => {
+            botao.dataset.rotuloOriginal = botao.textContent ?? "Copiar";
+
+            botao.addEventListener("click", async () => {
+                const texto = botao.dataset.copiar;
+
+                if (!texto) {
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.writeText(texto);
+                    botao.dataset.copiado = "true";
+                    botao.textContent = "Copiado";
+
+                    window.setTimeout(() => {
+                        botao.dataset.copiado = "false";
+                        botao.textContent = botao.dataset.rotuloOriginal ?? "Copiar";
+                    }, 1800);
+                } catch (erro) {
+                    botao.textContent = "Falhou";
+
+                    window.setTimeout(() => {
+                        botao.textContent = botao.dataset.rotuloOriginal ?? "Copiar";
+                    }, 1800);
+                }
+            });
+        });
+
+        if ("IntersectionObserver" in window) {
+            const observadorRevelar = new IntersectionObserver(
+                (entradas) => {
+                    entradas.forEach((entrada) => {
+                        if (entrada.isIntersecting) {
+                            entrada.target.classList.add("visivel");
+                            observadorRevelar.unobserve(entrada.target);
+                        }
+                    });
+                },
+                {
+                    threshold: 0.16,
+                    rootMargin: "0px 0px -40px 0px"
+                }
+            );
+
+            elementosRevelar.forEach((elemento) => {
+                observadorRevelar.observe(elemento);
+            });
+
+            const observadorSecoes = new IntersectionObserver(
+                (entradas) => {
+                    entradas.forEach((entrada) => {
+                        if (!entrada.isIntersecting) {
+                            return;
+                        }
+
+                        const idSecao = entrada.target.getAttribute("id");
+
+                        linksNavegacao.forEach((link) => {
+                            const corresponde = link.getAttribute("href") === `#${idSecao}`;
+                            link.classList.toggle("ativo", corresponde);
+                        });
+                    });
+                },
+                {
+                    threshold: 0.45
+                }
+            );
+
+            secoesMonitoradas.forEach((secao) => {
+                observadorSecoes.observe(secao);
+            });
+        } else {
+            elementosRevelar.forEach((elemento) => {
+                elemento.classList.add("visivel");
+            });
+        }
+    </script>
+</body>
+</html>

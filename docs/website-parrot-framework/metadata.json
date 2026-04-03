@@ -1,0 +1,5 @@
+{
+  "name": "Parrot PHP Framework",
+  "description": "A modern, lean, and secure REST micro-framework for PHP 8.4.",
+  "requestFramePermissions": []
+}
